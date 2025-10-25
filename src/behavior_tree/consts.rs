@@ -16,7 +16,7 @@ impl TaskStatus {
     }
 }
 
-enum AbortType {
+pub enum AbortType {
     None,
 	Self_,
 	LowerPriority,

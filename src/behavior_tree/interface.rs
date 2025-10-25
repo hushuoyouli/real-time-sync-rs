@@ -1,5 +1,5 @@
 use  std::rc::Rc;
-use super::consts::TaskStatus;
+use super::consts::{TaskStatus, AbortType};
 
 pub trait IUnit {
     fn id(&self) -> u64;
@@ -118,7 +118,8 @@ pub trait IParentTask :ITask{
 }
 
 pub trait ICompositeTask:IParentTask{
-
+	fn abort_type()->AbortType;
+	fn set_abort_type(abort_type:AbortType);
 }
 
 pub trait IDecoratorTask:IParentTask{
