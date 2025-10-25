@@ -77,7 +77,7 @@ pub trait IAction:ITask {
 	fn send_sync_data(&self, data:Vec<u8>);
 	fn rebuild_sync_datas(&self);
 	fn set_sync_data_collector(&mut self, collector:SyncDataCollector);
-	fn sync_data_collector(&self)->SyncDataCollector;
+	fn sync_data_collector(&self)->Option<SyncDataCollector>;
 }
 
 pub trait IParentTask :ITask{
