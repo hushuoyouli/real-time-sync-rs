@@ -1,26 +1,13 @@
 use std::{collections::HashMap, rc::Rc};
-
-enum TaskStatus{
-    Inactive,
-	Running,
-	Success,
-	Failure,
-}
+use super::consts::{TaskStatus, AbortType};
+use super::interface::{IAction, IConditional, IComposite, IDecorator};
 
 enum TaskType{
-    Action,
-    Conditional,
-    Composite,
-    Decorator,
+    Action(Rc<Box<dyn IAction>>),
+    Conditional(Rc<Box<dyn IConditional>>),
+    Composite(Rc<Box<dyn IComposite>>),
+    Decorator(Rc<Box<dyn IDecorator>>),
 }
-
-enum AbortType{
-    None,
-	Self_,
-	LowerPriority,
-    Both,
-}
-
 
 pub struct ConditionalReevaluate{
 
@@ -39,7 +26,7 @@ struct RunningStack{
 
 pub struct BehaviorTree{
     id: u64,
-    taskList: Vec<Rc<Box<TaskType>>>,
+    taskList: Vec<TaskType>,
     parentIndex:Vec<u32>,
 
     childrenIndex :Vec<Vec<u32>>,

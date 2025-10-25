@@ -82,6 +82,10 @@ pub trait IAction:ITask {
 	fn sync_data_collector(&self)->Option<SyncDataCollector>;
 }
 
+pub trait IConditional:ITask {
+
+}
+
 pub trait IParentTask :ITask{
 	fn can_run_parallel_children(&self)->bool{
 		false
@@ -117,12 +121,12 @@ pub trait IParentTask :ITask{
 	fn add_child(&mut self, task:Rc<Box<dyn ITask>>);
 }
 
-pub trait ICompositeTask:IParentTask{
-	fn abort_type()->AbortType;
-	fn set_abort_type(abort_type:AbortType);
+pub trait IComposite:IParentTask{
+	fn abort_type(&self)->AbortType;
+	fn set_abort_type(&mut self, abort_type:AbortType);
 }
 
-pub trait IDecoratorTask:IParentTask{
+pub trait IDecorator:IParentTask{
 
 }
 
