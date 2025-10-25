@@ -70,6 +70,27 @@ pub struct BehaviorTree{
 }
 
 impl BehaviorTree{
-
+	pub fn new() -> Self{
+		Self{
+			id: 0,
+			taskList: Vec::new(),
+			parentIndex: Vec::new(),
+			childrenIndex: Vec::new(),
+			relativeChildIndex: Vec::new(),
+			activeStack: Vec::new(),
+			nonInstantTaskStatus: Vec::new(),
+			conditionalReevaluate: Vec::new(),
+			conditionalReevaluateMap: HashMap::new(),
+			isRunning: false,
+			initializeFirstStackAndFirstTask: false,
+			executionStatus: TaskStatus::Inactive,
+			config: Vec::new(),
+			stackID: 0,
+			stackID2StackData: HashMap::new(),
+			stackID2ParallelTaskID: HashMap::new(),
+			parallelTaskID2StackIDs: HashMap::new(),
+			initializeForBaseFlag: false,
+		}
+	}
     
 }
