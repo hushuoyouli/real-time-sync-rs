@@ -103,22 +103,22 @@ impl IBehaviorTree for BehaviorTree{
 		for task in self.task_list.iter_mut(){
 			match task {
 				TaskType::Action(action) => {
-					let mut action = Rc::get_mut(action).unwrap();
+					let action = Rc::get_mut(action).unwrap();
 					if action.is_sync_to_client(){
 						action.set_sync_data_collector(SyncDataCollector::new());
 					};
 					action.on_awake();
 				},
 				TaskType::Conditional(conditional) => {
-					let mut conditional = Rc::get_mut(conditional).unwrap();
+					let conditional = Rc::get_mut(conditional).unwrap();
 					conditional.on_awake();
 				},
 				TaskType::Composite(composite) => {
-					let mut composite = Rc::get_mut(composite).unwrap();
+					let composite = Rc::get_mut(composite).unwrap();
 					composite.on_awake();
 				},
 				TaskType::Decorator(decorator) => {
-					let mut decorator = Rc::get_mut(decorator).unwrap();
+					let decorator = Rc::get_mut(decorator).unwrap();
 					decorator.on_awake();
 				},
 			}
