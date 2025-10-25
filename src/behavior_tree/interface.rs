@@ -21,15 +21,15 @@ pub trait ITask{
 }
 
 pub trait IRebuildSyncDataCollector{
-    fn stack(&mut self, behaviorTree:&impl IBehaviorTree, data:&StackRuntimeData);
+    fn stack(&mut self, behavior_tree:&impl IBehaviorTree, data:&StackRuntimeData);
 
 	//	需要同步的action的回调
-	fn action(&mut self, behaviorTree:&impl IBehaviorTree, taskRuntimeData:&TaskRuntimeData, stackRuntimeData:&StackRuntimeData, task:&impl ITask, datas:&Vec<Vec<u8>>);
+	fn action(&mut self, behavior_tree:&impl IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&impl ITask, datas:&Vec<Vec<u8>>);
 
 	//	并发任务相关的执行栈恢复同步数据
-	fn parallel(&mut self, behaviorTree:&impl IBehaviorTree, taskRuntimeData:&TaskRuntimeData, stackRuntimeData:&StackRuntimeData, task:&impl ITask, childStackRuntimeDatas:Vec<&StackRuntimeData>);
-
+	fn parallel(&mut self, behavior_tree:&impl IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&impl ITask, child_stack_runtime_datas:Vec<&StackRuntimeData>);
 }
+
 
 pub trait IBehaviorTree{
     fn id()->u64;
