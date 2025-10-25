@@ -1,4 +1,4 @@
-enum TaskStatus{
+pub enum TaskStatus{
     Inactive,
 	Running,
 	Success,
