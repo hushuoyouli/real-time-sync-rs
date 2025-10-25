@@ -137,10 +137,8 @@ impl IBehaviorTree for BehaviorTree{
 		
 		let now_timestamp_in_milli = self.clock.timestamp_in_mill();
 		self.runtime_event_handle.post_initialize(self, now_timestamp_in_milli);
-
-
+		self.initialize_first_stack_and_first_task = true;
 		
-
 		Ok(())
 	}
 
