@@ -47,7 +47,10 @@ pub trait ITask{
 
 	fn on_awake(&mut self);
     fn on_start(&mut self);
-    fn on_update(&mut self)->TaskStatus;
+    fn on_update(&mut self)->TaskStatus{
+		TaskStatus::Inactive
+	}
+
     fn on_end(&mut self);
     fn on_complete(&mut self);
 }
