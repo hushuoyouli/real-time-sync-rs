@@ -1,8 +1,8 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IAction, IConditional, IComposite, IDecorator,
+use super::interface::{ITask,IAction, IConditional, IComposite, IDecorator,
 	IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
-	IParser,IBehaviorTree,IRebuildSyncDataCollector};
+	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
 
 
 pub struct ConditionalReevaluate{
@@ -22,6 +22,7 @@ struct RunningStack{
 
 pub struct BehaviorTree{
     id: u64,
+
     task_list: Vec<TaskType>,
     parent_index:Vec<u32>,
 
@@ -81,6 +82,10 @@ impl BehaviorTree{
 			initialize_for_base_flag: false,
 		}))
 	}
+
+	fn initialize(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
+		Ok(())
+	}
 }
 
 impl IBehaviorTree for BehaviorTree{
@@ -89,6 +94,39 @@ impl IBehaviorTree for BehaviorTree{
 	}
 
 	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
+		if self.is_running{
+			return Err("BehaviorTree is already running".into());
+		}
+
+		self.initialize(parser)?;
+
+		for task in self.task_list.iter_mut(){
+			match task {
+				TaskType::Action(action) => {
+					let mut action = Rc::get_mut(action).unwrap();
+					if action.is_sync_to_client(){
+						action.set_sync_data_collector(SyncDataCollector::new());
+					};
+					action.on_awake();
+				},
+				TaskType::Conditional(conditional) => {
+					let mut conditional = Rc::get_mut(conditional).unwrap();
+					conditional.on_awake();
+				},
+				TaskType::Composite(composite) => {
+					let mut composite = Rc::get_mut(composite).unwrap();
+					composite.on_awake();
+				},
+				TaskType::Decorator(decorator) => {
+					let mut decorator = Rc::get_mut(decorator).unwrap();
+					decorator.on_awake();
+				},
+			}
+		}
+
+
+		
+
 		Ok(())
 	}
 
