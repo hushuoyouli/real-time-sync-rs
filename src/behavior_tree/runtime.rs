@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IAction, IConditional, IComposite, IDecorator};
+use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle};
 
 enum TaskType{
     Action(Rc<Box<dyn IAction>>),
@@ -26,58 +26,62 @@ struct RunningStack{
 
 pub struct BehaviorTree{
     id: u64,
-    taskList: Vec<TaskType>,
-    parentIndex:Vec<u32>,
+    task_list: Vec<TaskType>,
+    parent_index:Vec<u32>,
 
-    childrenIndex :Vec<Vec<u32>>,
-	relativeChildIndex:Vec<u32>,
+    children_index :Vec<Vec<u32>>,
+	relative_child_index:Vec<u32>,
 
-    activeStack :Vec<Rc<Box<RunningStack>>>,
-	nonInstantTaskStatus:Vec<TaskStatus>,
-	conditionalReevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
-	conditionalReevaluateMap:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
+    active_stack :Vec<Rc<Box<RunningStack>>>,
+	non_instant_task_status:Vec<TaskStatus>,
+	conditional_reevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
+	conditional_reevaluate_map:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
 
-    isRunning:bool,
-	initializeFirstStackAndFirstTask:bool, //	是否需要初始化第一个执行栈和第一个任务
-	executionStatus:TaskStatus,
+    is_running:bool,
+	initialize_first_stack_and_first_task:bool, //	是否需要初始化第一个执行栈和第一个任务
+	execution_status:TaskStatus,
 	config:Vec<u8>,
-	//unit                             iface.IUnit
-	//rootTask                         iface.ITask
-	//clock                            iface.IClock
-	stackID:u32,
-    stackID2StackData:HashMap<u32, Rc<Box<RunningStack>>>,
+	unit:Rc<Box<dyn IUnit>>,
+	root_task:Option<TaskType>,
+	clock:Rc<Box<dyn IClock>>,                            
+	stack_id:u32,
+    stack_id_to_stack_data:HashMap<u32, Rc<Box<RunningStack>>>,
 
-	//taskDatas map[int]*iface.TaskRuntimeData
+	task_datas:HashMap<u32, Rc<Box<TaskRuntimeData>>>,
 
-	stackID2ParallelTaskID:HashMap<u32, u32>,
-	parallelTaskID2StackIDs:HashMap<u32, Vec<u32>>,
+	stack_id_to_parallel_task_id:HashMap<u32, u32>,
+	parallel_task_id_to_stack_ids:HashMap<u32, Vec<u32>>,
 
-	//runtimeEventHandle    iface.IRuntimeEventHandle
-	initializeForBaseFlag:bool
+	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
+	initialize_for_base_flag:bool
 }
 
 impl BehaviorTree{
-	pub fn new() -> Self{
-		Self{
-			id: 0,
-			taskList: Vec::new(),
-			parentIndex: Vec::new(),
-			childrenIndex: Vec::new(),
-			relativeChildIndex: Vec::new(),
-			activeStack: Vec::new(),
-			nonInstantTaskStatus: Vec::new(),
-			conditionalReevaluate: Vec::new(),
-			conditionalReevaluateMap: HashMap::new(),
-			isRunning: false,
-			initializeFirstStackAndFirstTask: false,
-			executionStatus: TaskStatus::Inactive,
-			config: Vec::new(),
-			stackID: 0,
-			stackID2StackData: HashMap::new(),
-			stackID2ParallelTaskID: HashMap::new(),
-			parallelTaskID2StackIDs: HashMap::new(),
-			initializeForBaseFlag: false,
-		}
+	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
+		Rc::new(Box::new(Self{
+			id,
+			task_list: Vec::new(),
+			parent_index: Vec::new(),
+			children_index: Vec::new(),
+			relative_child_index: Vec::new(),
+			active_stack: Vec::new(),
+			non_instant_task_status: Vec::new(),
+			conditional_reevaluate: Vec::new(),
+			conditional_reevaluate_map: HashMap::new(),
+			is_running: false,
+			initialize_first_stack_and_first_task: false,
+			execution_status: TaskStatus::Inactive,
+			config: config.clone(),
+			unit:unit,
+			root_task:None,
+			clock:clock,
+			stack_id: 0,
+			stack_id_to_stack_data: HashMap::new(),
+			task_datas: HashMap::new(),
+			stack_id_to_parallel_task_id: HashMap::new(),
+			parallel_task_id_to_stack_ids: HashMap::new(),
+			runtime_event_handle: runtime_event_handle,
+			initialize_for_base_flag: false,
+		}))
 	}
-    
 }
