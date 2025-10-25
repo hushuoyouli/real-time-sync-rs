@@ -83,7 +83,36 @@ pub trait IAction:ITask {
 }
 
 pub trait IParentTask :ITask{
-    
+	fn can_run_parallel_children(&self)->bool;
+	/*
+		跟是否可以并发有关的
+		OnChildExecuted
+		OnChildStarted
+		OverrideStatus
+	*/
+	//	CanRunParallelChildren	为false的时候调用
+	fn  on_child_executed1(&mut self, child_status:TaskStatus);
+	fn  on_child_started0(&mut self);
+	//	CanRunParallelChildren	为true的时候调用
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus);
+	fn 	on_child_started1(&mut self,index:u32);
+
+	fn current_child_index(&self)->u32;
+	fn can_execute(&mut self)->bool;
+	fn decorate(&mut self, status:TaskStatus)->TaskStatus;
+
+	/*
+		TODO：这个部分还需要继续了解
+		OverrideStatus
+	*/
+	fn override_status0(&mut self)->TaskStatus;
+	fn override_status1(&mut self, status:TaskStatus)->TaskStatus;
+
+	fn on_conditional_abort(&mut self, index:u32);
+	fn on_cancel_conditional_abort(&mut self, index:u32); //当Abort取消的时候，会调用这个接口
+
+	fn children(&self)->Vec<Rc<Box<dyn ITask>>>;
+	fn add_child(&mut self, task:Rc<Box<dyn ITask>>);
 }
 
 pub trait ICompositeTask:IParentTask{
