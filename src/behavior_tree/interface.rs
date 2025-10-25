@@ -18,14 +18,6 @@ pub struct StackRuntimeData{
 }
 
 pub trait ITask{
-
-}
-
-pub trait IAction:ITask {
-    
-}
-
-pub trait IParentTask :ITask{
     fn corresponding_type(&self)->String;
 	fn set_corresponding_type(&mut self, corresponding_type:String);
 	//	所属的树
@@ -58,6 +50,38 @@ pub trait IParentTask :ITask{
     fn on_update(&self)->TaskStatus;
     fn on_end(&self);
     fn on_complete(&self);
+}
+
+pub struct SyncDataCollector {
+    datas:Vec<Vec<u8>>,
+}
+
+impl SyncDataCollector{
+    pub fn new() -> Self{
+        Self{
+            datas: Vec::new(),
+        }
+    }
+    pub fn add_data(&mut self, data:Vec<u8>){
+        self.datas.push(data);
+    }
+    pub fn get_and_clear(&mut self)->Vec<Vec<u8>>{
+        let datas = self.datas.clone();
+        self.datas.clear();
+        datas
+    }
+}
+
+pub trait IAction:ITask {
+    fn is_sync_to_client(&self)->bool;
+	fn send_sync_data(&self, data:Vec<u8>);
+	fn rebuild_sync_datas(&self);
+	fn set_sync_data_collector(&mut self, collector:SyncDataCollector);
+	fn sync_data_collector(&self)->SyncDataCollector;
+}
+
+pub trait IParentTask :ITask{
+    
 }
 
 pub trait ICompositeTask:IParentTask{
