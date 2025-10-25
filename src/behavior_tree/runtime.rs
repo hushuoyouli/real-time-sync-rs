@@ -107,19 +107,27 @@ impl IBehaviorTree for BehaviorTree{
 					if action.is_sync_to_client(){
 						action.set_sync_data_collector(SyncDataCollector::new());
 					};
-					action.on_awake();
+					if !action.disabled() {
+						action.on_awake();
+					}
 				},
 				TaskType::Conditional(conditional) => {
 					let conditional = Rc::get_mut(conditional).unwrap();
-					conditional.on_awake();
+					if !conditional.disabled() {
+						conditional.on_awake();
+					}
 				},
 				TaskType::Composite(composite) => {
 					let composite = Rc::get_mut(composite).unwrap();
-					composite.on_awake();
+					if !composite.disabled() {
+						composite.on_awake();
+					}
 				},
 				TaskType::Decorator(decorator) => {
 					let decorator = Rc::get_mut(decorator).unwrap();
-					decorator.on_awake();
+					if !decorator.disabled() {
+						decorator.on_awake();
+					}
 				},
 			}
 		}
