@@ -45,11 +45,11 @@ pub trait ITask{
 	fn unit(&self)->Rc<Box<dyn IUnit>>;
     fn set_unit(&mut self, unit:Rc<Box<dyn IUnit>>);
 
-	fn on_awake(&self);
-    fn on_start(&self);
-    fn on_update(&self)->TaskStatus;
-    fn on_end(&self);
-    fn on_complete(&self);
+	fn on_awake(&mut self);
+    fn on_start(&mut self);
+    fn on_update(&mut self)->TaskStatus;
+    fn on_end(&mut self);
+    fn on_complete(&mut self);
 }
 
 pub struct SyncDataCollector {
