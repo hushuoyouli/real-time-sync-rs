@@ -156,31 +156,31 @@ pub trait IBehaviorTree{
 }
 
 pub trait IRuntimeEventHandle {
-    fn post_initialize(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:i64);
+    fn post_initialize(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:u64);
 	//	树结束
-	fn post_on_complete(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:i64);
+	fn post_on_complete(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:u64);
 
 	//	同步需要
 	fn new_stack(&self, behavior_tree:&dyn IBehaviorTree, data:&StackRuntimeData);
-	fn remove_stack(&self, behavior_tree:&dyn IBehaviorTree, data:&StackRuntimeData, now_timestamp_in_milli:i64);
+	fn remove_stack(&self, behavior_tree:&dyn IBehaviorTree, data:&StackRuntimeData, now_timestamp_in_milli:u64);
 
 	//	以下3个回调可以用于追踪树的执行
 	fn pre_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask);
-	fn post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:i64, status:TaskStatus); //	任何的任务每帧调用的结果
-	fn post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:i64);
+	fn post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:u64, status:TaskStatus); //	任何的任务每帧调用的结果
+	fn post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:u64);
 
 	//	需要同步的action的回调，同步需要
 	fn action_post_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, datas:Vec<Vec<u8>>);
-	fn action_post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:i64, status:TaskStatus, datas:Vec<Vec<u8>>); //	任何的任务每帧调用的结果
-	fn action_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:i64, datas:Vec<Vec<u8>>);
+	fn action_post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:u64, status:TaskStatus, datas:Vec<Vec<u8>>); //	任何的任务每帧调用的结果
+	fn action_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:u64, datas:Vec<Vec<u8>>);
 
 	//	需要同步的并发任务进入调用，同步需要
 	fn parallel_pre_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask);
-	fn parallel_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:i64);
+	fn parallel_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, now_timestamp_in_milli:u64);
 
 	//	并发任务相关的执行栈的增加/减少，调用顺序是NewStack/ParallelAddChildStack/ParallelRemoveChildStack/RemoveStack
 	fn parallel_add_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, child_stack_runtime_data:&StackRuntimeData);
-	fn parallel_remove_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, child_stack_runtime_data:&StackRuntimeData, now_timestamp_in_milli:i64);
+	fn parallel_remove_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, child_stack_runtime_data:&StackRuntimeData, now_timestamp_in_milli:u64);
     
 }
 

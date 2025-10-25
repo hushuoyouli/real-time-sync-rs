@@ -132,6 +132,12 @@ impl IBehaviorTree for BehaviorTree{
 			}
 		}
 
+		self.execution_status = TaskStatus::Inactive;
+		self.is_running = true;
+		
+		let now_timestamp_in_milli = self.clock.timestamp_in_mill();
+		self.runtime_event_handle.post_initialize(self, now_timestamp_in_milli);
+
 
 		
 
