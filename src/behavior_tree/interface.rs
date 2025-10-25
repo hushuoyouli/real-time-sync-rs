@@ -6,7 +6,7 @@ pub trait IUnit {
 }
 
 pub trait IClock{
-
+	fn timestamp_in_mill(&self)->u64;
 }
 
 pub struct TaskRuntimeData{

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,IParser,IBehaviorTree};
+use super::interface::{IAction, IConditional, IComposite, IDecorator,
+	IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
+	IParser,IBehaviorTree,IRebuildSyncDataCollector};
 
 
 pub struct ConditionalReevaluate{
@@ -87,11 +89,11 @@ impl IBehaviorTree for BehaviorTree{
 	}
 
 	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
-
+		Ok(())
 	}
 
 	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>{
-
+		Ok(())
 	}
 
 	fn update(&mut self){
@@ -99,17 +101,18 @@ impl IBehaviorTree for BehaviorTree{
 	}
 
 	fn is_runnning(&self)->bool{
-
+		self.is_running
 	}
 
 	fn unit(&self)->Rc<Box<dyn IUnit>>{
-
+		self.unit.clone()
 	}
 
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector){
 
 	}
-	
-	fn clock(&self)->Rc<Box<dyn IClock>>
-	
+
+	fn clock(&self)->Rc<Box<dyn IClock>>{
+		self.clock.clone()
+	}
 }
