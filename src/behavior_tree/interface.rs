@@ -83,7 +83,9 @@ pub trait IAction:ITask {
 }
 
 pub trait IParentTask :ITask{
-	fn can_run_parallel_children(&self)->bool;
+	fn can_run_parallel_children(&self)->bool{
+		false
+	}
 	/*
 		跟是否可以并发有关的
 		OnChildExecuted
