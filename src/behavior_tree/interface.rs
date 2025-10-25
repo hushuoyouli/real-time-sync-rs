@@ -145,7 +145,7 @@ pub trait IRebuildSyncDataCollector{
 pub trait IBehaviorTree{
     fn id(&self)->u64;
 
-	fn enable(&mut self)->Result<(), Box<dyn std::error::Error>>;
+	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>;
 	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>;
 	fn update(&mut self);
 	fn is_runnning(&self)->bool;

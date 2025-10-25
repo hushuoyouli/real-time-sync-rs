@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,IParser};
+use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,IParser,IBehaviorTree};
 
 
 pub struct ConditionalReevaluate{
@@ -52,9 +52,8 @@ pub struct BehaviorTree{
 
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
-		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>, parser:&dyn IParser) -> Result<Rc<Box<Self>>, Box<dyn std::error::Error>>{
-			
-		let mut behavior_tree = Rc::new(Box::new(Self{
+		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
+		Rc::new(Box::new(Self{
 			id,
 			task_list: Vec::new(),
 			parent_index: Vec::new(),
@@ -78,11 +77,39 @@ impl BehaviorTree{
 			parallel_task_id_to_stack_ids: HashMap::new(),
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
-		}));
+		}))
+	}
+}
 
-		let root_task = parser.generate(&config)?;
-		let behavior_tree_mut = Rc::get_mut(&mut behavior_tree).ok_or("Failed to get mutable reference")?;
-		behavior_tree_mut.root_task = Some(root_task.clone());
+impl IBehaviorTree for BehaviorTree{
+	fn id(&self)->u64{
+		self.id
+	}
 
-		Ok(behavior_tree)
-	}}
+	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
+
+	}
+
+	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>{
+
+	}
+
+	fn update(&mut self){
+
+	}
+
+	fn is_runnning(&self)->bool{
+
+	}
+
+	fn unit(&self)->Rc<Box<dyn IUnit>>{
+
+	}
+
+	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector){
+
+	}
+	
+	fn clock(&self)->Rc<Box<dyn IClock>>
+	
+}
