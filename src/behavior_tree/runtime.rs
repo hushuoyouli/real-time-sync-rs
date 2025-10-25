@@ -1,13 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle};
+use super::interface::{IAction, IConditional, IComposite, IDecorator,IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,IParser};
 
-enum TaskType{
-    Action(Rc<Box<dyn IAction>>),
-    Conditional(Rc<Box<dyn IConditional>>),
-    Composite(Rc<Box<dyn IComposite>>),
-    Decorator(Rc<Box<dyn IDecorator>>),
-}
 
 pub struct ConditionalReevaluate{
 
@@ -19,9 +13,9 @@ pub struct StackRuntimeData{
 }
 
 struct RunningStack{
-    stackID:u32,
+    stack_id:u32,
     stack:Vec<u32>,
-    stackRuntimeData:Rc<Box<StackRuntimeData>>,
+    stack_runtime_data:Rc<Box<StackRuntimeData>>,
 }
 
 pub struct BehaviorTree{
@@ -42,7 +36,7 @@ pub struct BehaviorTree{
 	execution_status:TaskStatus,
 	config:Vec<u8>,
 	unit:Rc<Box<dyn IUnit>>,
-	root_task:Option<TaskType>,
+	root_task:Option<Rc<Box<TaskType>>>,
 	clock:Rc<Box<dyn IClock>>,                            
 	stack_id:u32,
     stack_id_to_stack_data:HashMap<u32, Rc<Box<RunningStack>>>,
@@ -57,8 +51,10 @@ pub struct BehaviorTree{
 }
 
 impl BehaviorTree{
-	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
-		Rc::new(Box::new(Self{
+	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
+		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>, parser:&dyn IParser) -> Result<Rc<Box<Self>>, Box<dyn std::error::Error>>{
+			
+		let mut behavior_tree = Rc::new(Box::new(Self{
 			id,
 			task_list: Vec::new(),
 			parent_index: Vec::new(),
@@ -82,6 +78,11 @@ impl BehaviorTree{
 			parallel_task_id_to_stack_ids: HashMap::new(),
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
-		}))
-	}
-}
+		}));
+
+		let root_task = parser.generate(&config)?;
+		let behavior_tree_mut = Rc::get_mut(&mut behavior_tree).ok_or("Failed to get mutable reference")?;
+		behavior_tree_mut.root_task = Some(root_task.clone());
+
+		Ok(behavior_tree)
+	}}

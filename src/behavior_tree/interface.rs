@@ -183,3 +183,14 @@ pub trait IRuntimeEventHandle {
 	fn parallel_remove_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&dyn ITask, child_stack_runtime_data:&StackRuntimeData, now_timestamp_in_milli:i64);
     
 }
+
+pub enum TaskType{
+    Action(Rc<Box<dyn IAction>>),
+    Conditional(Rc<Box<dyn IConditional>>),
+    Composite(Rc<Box<dyn IComposite>>),
+    Decorator(Rc<Box<dyn IDecorator>>),
+}
+
+pub trait IParser{
+	fn generate(&self, config:&Vec<u8>) -> Result<Rc<Box<TaskType>>, Box<dyn std::error::Error>>;
+}
