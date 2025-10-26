@@ -1,8 +1,31 @@
 use std::{collections::HashMap, rc::Rc};
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{ITask,IAction, IConditional, IComposite, IDecorator,
-	IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
+use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
 	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
+
+
+pub trait IAction {
+	
+}
+
+pub trait IConditional{
+
+}
+
+pub trait IComposite{
+
+}
+
+pub trait IDecorator{
+
+}
+
+pub enum RealTaskType{
+	Action(Box<dyn IAction>),
+	Conditional(Box<dyn IConditional>),
+	Composite(Box<dyn IComposite>),
+	Decorator(Box<dyn IDecorator>),
+}
 
 
 pub struct TaskProxy{
@@ -14,10 +37,11 @@ pub struct TaskProxy{
 	//	IComposite专用
 	abort_type:AbortType,
 	children:Vec<Rc<Box<TaskProxy>>>,
+	real_task:RealTaskType,
 }
 
 impl TaskProxy {
-	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>) -> Self{
+	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
@@ -25,6 +49,7 @@ impl TaskProxy {
 			unit: unit.clone(),
 			abort_type: AbortType::None,
 			children: Vec::new(),
+			real_task:real_task,
 		}
 	}
 
@@ -169,27 +194,43 @@ impl TaskProxy {
 
 	//是否是action
 	pub fn is_implements_iaction(&self)-> bool{
-		false
+		match self.real_task {
+			RealTaskType::Action(_) => true,
+			_ => false,
+		}
 	}
 
 	//是否是composite
 	pub fn is_implements_icomposite(&self)-> bool{
-		false
+		match self.real_task {
+			RealTaskType::Composite(_) => true,
+			_ => false,
+		}
 	}
 	
 	//是否是decorator
 	pub fn is_implements_idecorator(&self)-> bool{
-		false
+		match self.real_task {
+			RealTaskType::Decorator(_) => true,
+			_ => false,
+		}
 	}
 
 	//是否是conditional
 	pub fn is_implements_iconditional(&self)-> bool{
-		false
+		match self.real_task {
+			RealTaskType::Conditional(_) => true,
+			_ => false,
+		}
 	}
 
 	//是否是parent task
 	pub fn is_implements_iparenttask(&self)-> bool{
-		false
+		match self.real_task {
+			RealTaskType::Composite(_) => true,
+			RealTaskType::Decorator(_) => true,
+			_ => false,
+		}
 	}
 	
 }

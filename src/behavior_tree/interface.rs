@@ -17,9 +17,6 @@ pub struct StackRuntimeData{
 
 }
 
-
-
-
 pub trait ITask{
     fn corresponding_type(&self)->String;
 	fn set_corresponding_type(&mut self, corresponding_type:String);
