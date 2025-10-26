@@ -562,10 +562,10 @@ struct EntryRoot{
 }
 
 impl  EntryRoot {
-	pub fn new() -> Self{
-		Self{
+	pub fn new() -> Rc<Box<Self>>{
+		Rc::new(Box::new(Self{
 			execution_status:TaskStatus::Inactive,
-		}
+		}))
 	}
 }
 
