@@ -1,19 +1,61 @@
 use std::{collections::HashMap, rc::Rc};
+use crate::behavior_tree;
+
 use super::consts::{TaskStatus, AbortType};
 use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
 	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
 
 
 pub trait IAction {
-	
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+
+	//	默认不需要同步
+	fn is_sync_to_client(&self)->bool{
+		false
+	}
+	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
 }
 
 pub trait IConditional{
-
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
 }
 
 pub trait IComposite{
+	fn can_run_parallel_children(&self)->bool{ false }
+	/*
+		跟是否可以并发有关的
+		OnChildExecuted
+		OnChildStarted
+		OverrideStatus
+	*/
+	//	CanRunParallelChildren	为false的时候调用
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn  on_child_started0(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	//	CanRunParallelChildren	为true的时候调用
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn 	on_child_started1(&mut self,index:u32, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 
+	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->u32;
+	fn can_execute(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool;
+	fn decorate(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
+
+	/*
+		TODO：这个部分还需要继续了解
+		OverrideStatus
+	*/
+	fn override_status0(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{TaskStatus::Inactive}
+	fn override_status1(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
+
+	fn on_conditional_abort(&mut self, index:u32){}
+	fn on_cancel_conditional_abort(&mut self, index:u32){} //当Abort取消的时候，会调用这个接口
 }
 
 pub trait IDecorator{
