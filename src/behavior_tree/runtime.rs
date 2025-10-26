@@ -168,27 +168,27 @@ impl TaskProxy {
 	}
 
 	//是否是action
-	pub fn is_implements_iaction()-> bool{
+	pub fn is_implements_iaction(&self)-> bool{
 		false
 	}
 
 	//是否是composite
-	pub fn is_implements_icomposite()-> bool{
+	pub fn is_implements_icomposite(&self)-> bool{
 		false
 	}
 	
 	//是否是decorator
-	pub fn is_implements_idecorator()-> bool{
+	pub fn is_implements_idecorator(&self)-> bool{
 		false
 	}
 
 	//是否是conditional
-	pub fn is_implements_iconditional()-> bool{
+	pub fn is_implements_iconditional(&self)-> bool{
 		false
 	}
 
 	//是否是parent task
-	pub fn is_implements_iparenttask()-> bool{
+	pub fn is_implements_iparenttask(&self)-> bool{
 		false
 	}
 	
@@ -212,7 +212,7 @@ struct RunningStack{
 pub struct BehaviorTree{
     id: u64,
 
-    task_list: Vec<TaskType>,
+    task_list: Vec<Rc<Box<TaskProxy>>>,
     parent_index:Vec<u32>,
 
     children_index :Vec<Vec<u32>>,
@@ -228,7 +228,7 @@ pub struct BehaviorTree{
 	execution_status:TaskStatus,
 	config:Vec<u8>,
 	unit:Rc<Box<dyn IUnit>>,
-	root_task:Option<Rc<Box<TaskType>>>,
+	root_task:Option<Rc<Box<TaskProxy>>>,
 	clock:Rc<Box<dyn IClock>>,                            
 	stack_id:u32,
     stack_id_to_stack_data:HashMap<u32, Rc<Box<RunningStack>>>,
@@ -290,34 +290,18 @@ impl IBehaviorTree for BehaviorTree{
 		self.initialize(parser)?;
 
 		for task in self.task_list.iter_mut(){
-			match task {
-				TaskType::Action(action) => {
-					let action = Rc::get_mut(action).unwrap();
-					if action.is_sync_to_client(){
-						action.set_sync_data_collector(SyncDataCollector::new());
-					};
-					if !action.disabled() {
-						action.on_awake();
-					}
-				},
-				TaskType::Conditional(conditional) => {
-					let conditional = Rc::get_mut(conditional).unwrap();
-					if !conditional.disabled() {
-						conditional.on_awake();
-					}
-				},
-				TaskType::Composite(composite) => {
-					let composite: &mut Box<dyn IComposite> = Rc::get_mut(composite).unwrap();
-					if !composite.disabled() {
-						composite.on_awake();
-					}
-				},
-				TaskType::Decorator(decorator) => {
-					let decorator = Rc::get_mut(decorator).unwrap();
-					if !decorator.disabled() {
-						decorator.on_awake();
-					}
-				},
+			let action = Rc::get_mut(task).unwrap();
+			if action.is_implements_iaction(){
+				if action.is_sync_to_client(){
+					action.set_sync_data_collector(SyncDataCollector::new());
+				};
+			}
+		}
+
+		for task in self.task_list.iter_mut(){
+			let task = Rc::get_mut(task).unwrap();
+			if !task.disabled(){
+				task.on_awake();
 			}
 		}
 
