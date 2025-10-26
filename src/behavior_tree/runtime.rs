@@ -1,11 +1,10 @@
-use std::{collections::HashMap, rc::{Rc, Weak}};
-use crate::behavior_tree;
+use std::{collections::HashMap, rc::{Rc}};
 
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType,
+use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,
 	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
 
-
+#[allow(unused_variables)]
 pub trait IAction {
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
@@ -27,6 +26,7 @@ impl IAction for EmptyAction {
 	}
 }
 
+#[allow(unused_variables)]
 pub trait IConditional{
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
@@ -36,6 +36,7 @@ pub trait IConditional{
 }
 
 
+#[allow(unused_variables)]
 pub trait  IParentTask {
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}   
@@ -94,12 +95,11 @@ pub struct TaskProxy{
 	abort_type:AbortType,
 	children:Vec<Rc<Box<TaskProxy>>>,
 	real_task:RealTaskType,
-	behavior_tree:Weak<Box<BehaviorTree>>,
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 }
 
 impl TaskProxy {
-	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType, behavior_tree:Weak<Box<BehaviorTree>>) -> Self{
+	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
@@ -108,7 +108,6 @@ impl TaskProxy {
 			abort_type: AbortType::None,
 			children: Vec::new(),
 			real_task:real_task,
-			behavior_tree: behavior_tree,
 			sync_data_collector: None,
 		}
 	}
@@ -152,9 +151,7 @@ impl TaskProxy {
 		self.real_task = real_task;
 	}
 
-    pub fn on_start(&mut self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+    pub fn on_start(&mut self,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_start(self, behavior_tree),
@@ -166,9 +163,7 @@ impl TaskProxy {
 		self.real_task = real_task;
 	}
 
-    pub fn on_end(&mut self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+    pub fn on_end(&mut self,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_end(self, behavior_tree),
@@ -180,9 +175,7 @@ impl TaskProxy {
 		self.real_task = real_task;
 	}
 
-    pub fn on_complete(&mut self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+    pub fn on_complete(&mut self,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_complete(self, behavior_tree),
@@ -195,9 +188,7 @@ impl TaskProxy {
 	}
 
 	//提供给Action与Conditional使用
-	pub fn on_update(&mut self)->TaskStatus{
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+	pub fn on_update(&mut self,behavior_tree:&BehaviorTree)->TaskStatus{
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let status = match &mut real_task {
 			RealTaskType::Action(action) => action.on_update(self, behavior_tree),
@@ -223,10 +214,7 @@ impl TaskProxy {
 		}
 	}
 	
-	pub fn rebuild_sync_datas(&self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
-		
+	pub fn rebuild_sync_datas(&self,behavior_tree:&BehaviorTree){
 		match &self.real_task {
 			RealTaskType::Action(action) => action.rebuild_sync_datas(self, behavior_tree),
 			_ => {panic!("error");},
@@ -259,9 +247,7 @@ impl TaskProxy {
 		OverrideStatus
 	*/
 	//	CanRunParallelChildren	为false的时候调用
-	pub fn  on_child_executed1(&mut self, child_status:TaskStatus){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+	pub fn  on_child_executed1(&mut self, child_status:TaskStatus,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_child_executed1(child_status,self, behavior_tree),
@@ -272,9 +258,7 @@ impl TaskProxy {
 		self.real_task = real_task;
 	}
 
-	pub fn  on_child_started0(&mut self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+	pub fn  on_child_started0(&mut self,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_child_started0(self, behavior_tree),
@@ -285,6 +269,7 @@ impl TaskProxy {
 		self.real_task = real_task;
 	}
 	//	CanRunParallelChildren	为true的时候调用
+	#[allow(unused_variables)]
 	pub fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus){
 
 	}
@@ -312,6 +297,7 @@ impl TaskProxy {
 	pub fn override_status0(&mut self)->TaskStatus{
 		TaskStatus::Inactive
 	}
+	#[allow(unused_variables)]
 	pub fn override_status1(&mut self, status:TaskStatus)->TaskStatus{
 		TaskStatus::Inactive
 	}
@@ -397,6 +383,7 @@ struct RunningStack{
     stack_runtime_data:Rc<Box<StackRuntimeData>>,
 }
 
+#[allow(unused_variables)]
 pub struct BehaviorTree{
     id: u64,
 
@@ -429,7 +416,7 @@ pub struct BehaviorTree{
 	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
 	initialize_for_base_flag:bool
 }
-
+#[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
 		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
@@ -465,6 +452,7 @@ impl BehaviorTree{
 	}
 }
 
+#[allow(unused_variables)]
 impl IBehaviorTree for BehaviorTree{
 	fn id(&self)->u64{
 		self.id
