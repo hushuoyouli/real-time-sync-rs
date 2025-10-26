@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::{Rc, Weak}};
 use crate::behavior_tree;
 
 use super::consts::{TaskStatus, AbortType};
@@ -19,6 +19,9 @@ pub trait IAction {
 	}
 	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 }
+
+pub struct EmptyAction;
+impl IAction for EmptyAction {}
 
 pub trait IConditional{
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
@@ -87,10 +90,11 @@ pub struct TaskProxy{
 	abort_type:AbortType,
 	children:Vec<Rc<Box<TaskProxy>>>,
 	real_task:RealTaskType,
+	behavior_tree:Weak<Box<BehaviorTree>>,
 }
 
 impl TaskProxy {
-	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
+	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType, behavior_tree:Weak<Box<BehaviorTree>>) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
@@ -99,6 +103,7 @@ impl TaskProxy {
 			abort_type: AbortType::None,
 			children: Vec::new(),
 			real_task:real_task,
+			behavior_tree: behavior_tree,
 		}
 	}
 
@@ -130,7 +135,17 @@ impl TaskProxy {
 
 
 	pub fn on_awake(&mut self){
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Action(action) => action.on_awake(self, behavior_tree),
+			RealTaskType::Composite(composite) => composite.on_awake(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_awake(self, behavior_tree),
+			RealTaskType::Conditional(conditional) => conditional.on_awake(self, behavior_tree),
+		}
 
+		self.real_task = real_task;
 	}
 
     pub fn on_start(&mut self){
