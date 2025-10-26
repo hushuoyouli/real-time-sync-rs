@@ -95,6 +95,7 @@ pub struct TaskProxy{
 	children:Vec<Rc<Box<TaskProxy>>>,
 	real_task:RealTaskType,
 	behavior_tree:Weak<Box<BehaviorTree>>,
+	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 }
 
 impl TaskProxy {
@@ -108,6 +109,7 @@ impl TaskProxy {
 			children: Vec::new(),
 			real_task:real_task,
 			behavior_tree: behavior_tree,
+			sync_data_collector: None,
 		}
 	}
 
@@ -233,12 +235,15 @@ impl TaskProxy {
 		}
 	}
 	
-	pub fn set_sync_data_collector(&mut self, collector:SyncDataCollector){
-
+	pub fn set_sync_data_collector(&mut self, collector:Rc<Box<SyncDataCollector>>){
+		match &self.real_task {
+			RealTaskType::Action(_) => self.sync_data_collector = Some(collector),
+			_ => {panic!("error");},
+		}
 	}
 	
-	pub fn sync_data_collector(&self)->Option<SyncDataCollector>{
-		None
+	pub fn sync_data_collector(&self)->Option<Rc<Box<SyncDataCollector>>>{
+		self.sync_data_collector.clone()
 	}
 
 	//	IParentTask接口

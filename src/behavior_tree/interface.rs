@@ -54,11 +54,12 @@ pub struct SyncDataCollector {
 }
 
 impl SyncDataCollector{
-    pub fn new() -> Self{
-        Self{
+    pub fn new() -> Rc<Box<Self>>{
+		Rc::new(Box::new(Self{
             datas: Vec::new(),
-        }
+        }))
     }
+
     pub fn add_data(&mut self, data:Vec<u8>){
         self.datas.push(data);
     }
@@ -72,8 +73,6 @@ impl SyncDataCollector{
 pub trait IAction:ITask {
     fn is_sync_to_client(&self)->bool;
 	fn rebuild_sync_datas(&self);
-	fn set_sync_data_collector(&mut self, collector:SyncDataCollector);
-	fn sync_data_collector(&self)->Option<SyncDataCollector>;
 }
 
 pub trait IConditional:ITask {
