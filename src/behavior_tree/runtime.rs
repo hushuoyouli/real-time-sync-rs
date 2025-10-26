@@ -140,9 +140,7 @@ impl TaskProxy {
 	}
 
 
-	pub fn on_awake(&mut self){
-		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
-		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+	pub fn on_awake(&mut self,behavior_tree:&BehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_awake(self, behavior_tree),
@@ -488,10 +486,11 @@ impl IBehaviorTree for BehaviorTree{
 			}
 		}
 
-		for task in self.task_list.iter_mut(){
-			let task = Rc::get_mut(task).unwrap();
+		let mut task_list = self.task_list.clone();
+		for task in task_list.iter_mut(){
+			let task = Rc::get_mut( task).unwrap();
 			if !task.disabled(){
-				task.on_awake();
+				task.on_awake(self);
 			}
 		}
 
