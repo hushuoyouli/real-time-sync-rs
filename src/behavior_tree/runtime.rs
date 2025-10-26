@@ -262,7 +262,16 @@ impl TaskProxy {
 	*/
 	//	CanRunParallelChildren	为false的时候调用
 	pub fn  on_child_executed1(&mut self, child_status:TaskStatus){
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Composite(composite) => composite.on_child_executed1(child_status,self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_child_executed1(child_status,self, behavior_tree),
+			_ => {panic!("error");},
+		}
 
+		self.real_task = real_task;
 	}
 
 	pub fn  on_child_started0(&mut self){
