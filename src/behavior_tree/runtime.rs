@@ -224,7 +224,13 @@ impl TaskProxy {
 	}
 	
 	pub fn rebuild_sync_datas(&self){
-
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		
+		match &self.real_task {
+			RealTaskType::Action(action) => action.rebuild_sync_datas(self, behavior_tree),
+			_ => {panic!("error");},
+		}
 	}
 	
 	pub fn set_sync_data_collector(&mut self, collector:SyncDataCollector){
