@@ -98,6 +98,7 @@ pub struct TaskProxy{
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 }
 
+#[allow(unused_variables)]
 impl TaskProxy {
 	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
 		Self{
@@ -270,16 +271,36 @@ impl TaskProxy {
 	}
 	//	CanRunParallelChildren	为true的时候调用
 	#[allow(unused_variables)]
-	pub fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus){
+	pub fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus,behavior_tree:&BehaviorTree){
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Composite(composite) => composite.on_child_executed2(index, child_status,self, behavior_tree),
+			//RealTaskType::Decorator(decorator) => decorator.on_child_executed2(index, child_status,self, behavior_tree),
+			_ => {panic!("error");},
+		}
 
+		self.real_task = real_task;
 	}
 
-	pub fn 	on_child_started1(&mut self,index:u32){
+	pub fn 	on_child_started1(&mut self,index:u32,behavior_tree:&BehaviorTree){
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Composite(composite) => composite.on_child_started1(index,self, behavior_tree),
+			//RealTaskType::Decorator(decorator) => decorator.on_child_executed2(index, child_status,self, behavior_tree),
+			_ => {panic!("error");},
+		}
 
+		self.real_task = real_task;
 	}
 
-	pub fn current_child_index(&self)->u32{
-		0
+	pub fn current_child_index(&self, behavior_tree:&BehaviorTree)->u32{
+		let result = match &self.real_task {
+			RealTaskType::Composite(composite) => composite.current_child_index(self, behavior_tree),
+			//RealTaskType::Decorator(decorator) => decorator.on_child_executed2(index, child_status,self, behavior_tree),
+			_ => {panic!("error"); 0 },
+		};
+		
+		result
 	}
 
 	pub fn can_execute(&mut self)->bool{
@@ -383,7 +404,6 @@ struct RunningStack{
     stack_runtime_data:Rc<Box<StackRuntimeData>>,
 }
 
-#[allow(unused_variables)]
 pub struct BehaviorTree{
     id: u64,
 
@@ -452,7 +472,6 @@ impl BehaviorTree{
 	}
 }
 
-#[allow(unused_variables)]
 impl IBehaviorTree for BehaviorTree{
 	fn id(&self)->u64{
 		self.id
