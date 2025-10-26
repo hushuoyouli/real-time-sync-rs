@@ -179,7 +179,8 @@ pub enum RealTaskType{
 
 pub struct TaskProxy{
 	corresponding_type:String,
-	id:u32,
+	id:i32,
+	name:String,
 	disabled:bool,
 	unit:Rc<Box<dyn IUnit>>,
 
@@ -192,10 +193,11 @@ pub struct TaskProxy{
 
 #[allow(unused_variables)]
 impl TaskProxy {
-	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
+	pub fn new(corresponding_type:&str, name:&str,unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
+			name:name.to_string(),
 			disabled: false,
 			unit: unit.clone(),
 			abort_type: AbortType::None,
@@ -210,11 +212,15 @@ impl TaskProxy {
 		self.corresponding_type.clone()
 	}
 
-	pub fn id(&self)->u32{
+	pub fn name(&self)->String{
+		self.name.clone()
+	}
+
+	pub fn id(&self)->i32{
 		self.id
 	}
 
-	pub fn set_id(&mut self, id:u32){
+	pub fn set_id(&mut self, id:i32){
 		self.id = id;
 	}
 
@@ -562,10 +568,10 @@ struct EntryRoot{
 }
 
 impl  EntryRoot {
-	pub fn new() -> Rc<Box<Self>>{
-		Rc::new(Box::new(Self{
+	pub fn new() -> Box<dyn IDecorator>{
+		Box::new(Self{
 			execution_status:TaskStatus::Inactive,
-		}))
+		})
 	}
 }
 
@@ -602,17 +608,17 @@ pub struct BehaviorTree{
     id: u64,
 
     task_list: Vec<Rc<Box<TaskProxy>>>,
-    parent_index:Vec<u32>,
+    parent_index:Vec<i32>,
 
     children_index :Vec<Vec<u32>>,
-	relative_child_index:Vec<u32>,
+	relative_child_index:Vec<i32>,
 
     active_stack :Vec<Rc<Box<RunningStack>>>,
 	non_instant_task_status:Vec<TaskStatus>,
 	conditional_reevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
 	conditional_reevaluate_map:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
 
-	parent_composite_index:Vec<u32>,
+	parent_composite_index:Vec<i32>,
 	child_conditional_index:Vec<Vec<u32>>,
 
     is_running:bool,
@@ -677,7 +683,34 @@ impl BehaviorTree{
 		let taskAddData: TaskAddData = TaskAddData::new(&self.unit);
 
 		let root_task = parser.deserialize(&self.config, &taskAddData)?;
+		let entry_root = EntryRoot::new();
+		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
+		root_proxy.add_child(&root_task);
+		
+		self.root_task = Some(Rc::new(Box::new(root_proxy)));
+		self.task_list.push(self.root_task.clone().unwrap());
+		self.parent_index.push(-1);
+		self.parent_composite_index.push(-1);
+		self.child_conditional_index.push(Vec::with_capacity(10));
+		self.relative_child_index.push(-1);
+		let mut parent_composite_index = -1;
 
+		Rc::get_mut(self.root_task.as_mut().unwrap()).unwrap().set_id(0);
+
+		if self.root_task.as_ref().unwrap().is_implements_iparenttask(){
+			if self.root_task.as_ref().unwrap().is_implements_icomposite(){
+				parent_composite_index = self.root_task.as_ref().unwrap().id();
+			}
+
+			let parent_task = self.root_task.as_ref().unwrap();
+
+		// Note: Cannot mutate Rc<Box<TaskProxy>> directly
+		// This would need to be handled differently in a real implementation
+		// for child in parent_task.children().iter() {
+		// 	Rc::get_mut(child).unwrap().set_id(1);
+		// }
+		}
+		
 		Ok(())
 	}
 
