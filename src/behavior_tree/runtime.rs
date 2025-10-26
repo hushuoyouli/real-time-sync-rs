@@ -5,6 +5,195 @@ use super::interface::{ITask,IAction, IConditional, IComposite, IDecorator,
 	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
 
 
+pub struct TaskProxy{
+	corresponding_type:String,
+	id:u32,
+	disabled:bool,
+	unit:Rc<Box<dyn IUnit>>,
+
+	//	IComposite专用
+	abort_type:AbortType,
+	children:Vec<Rc<Box<TaskProxy>>>,
+}
+
+impl TaskProxy {
+	pub fn new(corresponding_type:&str, unit:&Rc<Box<dyn IUnit>>) -> Self{
+		Self{
+			corresponding_type: corresponding_type.to_string(),
+			id:0,
+			disabled: false,
+			unit: unit.clone(),
+			abort_type: AbortType::None,
+			children: Vec::new(),
+		}
+	}
+
+
+	pub fn corresponding_type(&self)->String{
+		self.corresponding_type.clone()
+	}
+
+	pub fn id(&self)->u32{
+		self.id
+	}
+
+	pub fn set_id(&mut self, id:u32){
+		self.id = id;
+	}
+
+	//是否无效
+	pub fn disabled(&self)->bool{
+		self.disabled
+	}
+
+	pub fn set_disabled(&mut self, disabled:bool){
+		self.disabled = disabled;
+	}
+
+	pub fn unit(&self)->Rc<Box<dyn IUnit>>{
+		self.unit.clone()
+	}
+
+
+	pub fn on_awake(&mut self){
+
+	}
+
+    pub fn on_start(&mut self){
+
+	}
+
+    pub fn on_end(&mut self){
+
+	}
+
+    pub fn on_complete(&mut self){
+
+	}
+
+	//提供给Action与Conditional使用
+	pub fn on_update(&mut self)->TaskStatus{
+		TaskStatus::Inactive
+	}
+
+	//is_sync_to_client,rebuild_sync_datas,set_sync_data_collector,sync_data_collector这几个接口是提供给action用于同步的
+	pub fn is_sync_to_client(&self)->bool{
+		false
+	}
+	
+	pub fn rebuild_sync_datas(&self){
+
+	}
+	
+	pub fn set_sync_data_collector(&mut self, collector:SyncDataCollector){
+
+	}
+	
+	pub fn sync_data_collector(&self)->Option<SyncDataCollector>{
+		None
+	}
+
+	//	IParentTask接口
+	fn can_run_parallel_children(&self)->bool{
+		false
+	}
+	/*
+		跟是否可以并发有关的
+		OnChildExecuted
+		OnChildStarted
+		OverrideStatus
+	*/
+	//	CanRunParallelChildren	为false的时候调用
+	pub fn  on_child_executed1(&mut self, child_status:TaskStatus){
+
+	}
+
+	pub fn  on_child_started0(&mut self){
+
+	}
+	//	CanRunParallelChildren	为true的时候调用
+	pub fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus){
+
+	}
+
+	pub fn 	on_child_started1(&mut self,index:u32){
+
+	}
+
+	pub fn current_child_index(&self)->u32{
+		0
+	}
+
+	pub fn can_execute(&mut self)->bool{
+		false
+	}
+	
+	pub fn decorate(&mut self, status:TaskStatus)->TaskStatus{
+		TaskStatus::Inactive
+	}
+
+	/*
+		TODO：这个部分还需要继续了解
+		OverrideStatus
+	*/
+	pub fn override_status0(&mut self)->TaskStatus{
+		TaskStatus::Inactive
+	}
+	pub fn override_status1(&mut self, status:TaskStatus)->TaskStatus{
+		TaskStatus::Inactive
+	}
+
+	pub fn on_conditional_abort(&mut self, index:u32){
+
+	}
+
+	pub fn on_cancel_conditional_abort(&mut self, index:u32){
+
+	}
+
+	pub fn children(&self)->Vec<Rc<Box<TaskProxy>>>{
+		self.children.clone()
+	}
+	
+	pub fn add_child(&mut self, task:&Rc<Box<TaskProxy>>){
+		self.children.push(task.clone());
+	}
+
+	pub fn abort_type(&self)->AbortType{
+		self.abort_type
+	}
+	
+	pub fn set_abort_type(&mut self, abort_type:AbortType){
+		self.abort_type = abort_type;
+	}
+
+	//是否是action
+	pub fn is_implements_iaction()-> bool{
+		false
+	}
+
+	//是否是composite
+	pub fn is_implements_icomposite()-> bool{
+		false
+	}
+	
+	//是否是decorator
+	pub fn is_implements_idecorator()-> bool{
+		false
+	}
+
+	//是否是conditional
+	pub fn is_implements_iconditional()-> bool{
+		false
+	}
+
+	//是否是parent task
+	pub fn is_implements_iparenttask()-> bool{
+		false
+	}
+	
+}
+
 pub struct ConditionalReevaluate{
 
 }

@@ -16,6 +16,7 @@ impl TaskStatus {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum AbortType {
     None,
 	Self_,
@@ -27,12 +28,10 @@ impl AbortType {
     pub fn to_string(&self) -> &str {
         match self {
             AbortType::None => "None",
-            AbortType::Self_ => "Self",
+            AbortType::Self_ => "Self_",
             AbortType::LowerPriority => "LowerPriority",
             AbortType::Both => "Both",
         }
     }
 }
-
-
 
