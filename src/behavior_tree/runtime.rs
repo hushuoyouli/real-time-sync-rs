@@ -465,6 +465,10 @@ impl TaskProxy {
 	pub fn children(&self)->&Vec<Rc<Box<TaskProxy>>>{
 		&self.children
 	}
+
+	pub fn children_mut(&mut self)->&mut Vec<Rc<Box<TaskProxy>>>{
+		&mut self.children
+	}
 	
 	pub fn add_child(&mut self, task:&Rc<Box<TaskProxy>>){
 		self.children.push(task.clone());
@@ -702,14 +706,19 @@ impl BehaviorTree{
 				parent_composite_index = self.root_task.as_ref().unwrap().id();
 			}
 
-			let parent_task = self.root_task.as_ref().unwrap();
+			let mut parent_task = self.root_task.as_mut().unwrap().clone();
+			let mut children = Rc::get_mut(&mut parent_task).unwrap().children_mut().clone();
 
-		// Note: Cannot mutate Rc<Box<TaskProxy>> directly
-		// This would need to be handled differently in a real implementation
-		// for child in parent_task.children().iter() {
-		// 	Rc::get_mut(child).unwrap().set_id(1);
-		// }
+
+			for child in children.iter_mut(){
+				self.parse_child_task(child, &parent_task, parent_composite_index)?;
+			}
 		}
+		
+		Ok(())
+	}
+
+	fn parse_child_task(&mut self, child_task:&Rc<Box<TaskProxy>>, parent_task:&Rc<Box<TaskProxy>>, parent_composite_index:i32)->Result<(), Box<dyn std::error::Error>>{
 		
 		Ok(())
 	}
