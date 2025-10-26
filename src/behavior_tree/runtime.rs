@@ -281,7 +281,6 @@ impl TaskProxy {
 			_ => false,
 		}
 	}
-	
 }
 
 pub struct ConditionalReevaluate{
