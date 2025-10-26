@@ -21,8 +21,8 @@ pub trait ITask{
     fn corresponding_type(&self)->String;
 	fn set_corresponding_type(&mut self, corresponding_type:String);
 	//	所属的树
-	fn owner(&self)->Rc<Box<dyn IBehaviorTree>>;
-	fn set_owner(&mut self, owner:Rc<Box<dyn IBehaviorTree>>);
+	fn owner(&self)->Option<Weak<Box<dyn IBehaviorTree>>>;
+	fn set_owner(&mut self, owner:Option<Weak<Box<dyn IBehaviorTree>>>);
 	//	父节点
 	fn parent(&self)->Option<Rc<Box<dyn IParentTask>>>;
 	fn set_parent(&mut self, parent:Weak<Box<dyn IParentTask>>);
