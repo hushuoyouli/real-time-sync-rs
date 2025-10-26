@@ -9,7 +9,7 @@ use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType
 pub trait IAction {
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus;
     fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 
@@ -21,12 +21,16 @@ pub trait IAction {
 }
 
 pub struct EmptyAction;
-impl IAction for EmptyAction {}
+impl IAction for EmptyAction {
+	fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{
+		TaskStatus::Success
+	}
+}
 
 pub trait IConditional{
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus;
     fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 }
@@ -149,20 +153,63 @@ impl TaskProxy {
 	}
 
     pub fn on_start(&mut self){
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Action(action) => action.on_start(self, behavior_tree),
+			RealTaskType::Composite(composite) => composite.on_start(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_start(self, behavior_tree),
+			RealTaskType::Conditional(conditional) => conditional.on_start(self, behavior_tree),
+		}
 
+		self.real_task = real_task;
 	}
 
     pub fn on_end(&mut self){
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Action(action) => action.on_end(self, behavior_tree),
+			RealTaskType::Composite(composite) => composite.on_end(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_end(self, behavior_tree),
+			RealTaskType::Conditional(conditional) => conditional.on_end(self, behavior_tree),
+		}
 
+		self.real_task = real_task;
 	}
 
     pub fn on_complete(&mut self){
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		match &mut real_task {
+			RealTaskType::Action(action) => action.on_complete(self, behavior_tree),
+			RealTaskType::Composite(composite) => composite.on_complete(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_complete(self, behavior_tree),
+			RealTaskType::Conditional(conditional) => conditional.on_complete(self, behavior_tree),
+		}
 
+		self.real_task = real_task;
 	}
 
 	//提供给Action与Conditional使用
 	pub fn on_update(&mut self)->TaskStatus{
-		TaskStatus::Inactive
+		let mut behavior_tree = self.behavior_tree.upgrade().unwrap();
+		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let status = match &mut real_task {
+			RealTaskType::Action(action) => action.on_update(self, behavior_tree),
+			RealTaskType::Conditional(conditional) => conditional.on_update(self, behavior_tree),
+			_ => {
+				panic!("error");
+				TaskStatus::Inactive
+			},
+		};
+
+		self.real_task = real_task;
+		status
 	}
 
 	//is_sync_to_client,rebuild_sync_datas,set_sync_data_collector,sync_data_collector这几个接口是提供给action用于同步的
