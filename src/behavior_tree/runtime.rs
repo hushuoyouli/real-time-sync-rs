@@ -58,7 +58,7 @@ pub trait  IParentTask {
 	fn 	on_child_started1(&mut self,index:u32, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 
 	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->u32;
-	fn can_execute(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool;
+	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool;
 	fn decorate(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
 
 	/*
@@ -297,42 +297,75 @@ impl TaskProxy {
 		let result = match &self.real_task {
 			RealTaskType::Composite(composite) => composite.current_child_index(self, behavior_tree),
 			//RealTaskType::Decorator(decorator) => decorator.on_child_executed2(index, child_status,self, behavior_tree),
-			_ => {panic!("error"); 0 },
+			_ => {panic!("error");  },
 		};
 		
 		result
 	}
 
-	pub fn can_execute(&mut self)->bool{
-		false
+	pub fn can_execute(&self, behavior_tree:&BehaviorTree)->bool{
+		match &self.real_task {
+			RealTaskType::Composite(composite) => composite.can_execute(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.can_execute(self, behavior_tree),
+			_ => {panic!("error");},
+		}
 	}
 	
-	pub fn decorate(&mut self, status:TaskStatus)->TaskStatus{
-		TaskStatus::Inactive
+	pub fn decorate(&mut self, status:TaskStatus, behavior_tree:&BehaviorTree)->TaskStatus{
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let result = match &mut real_task {
+			RealTaskType::Composite(composite) => composite.decorate(status,self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.decorate(status,self, behavior_tree),
+			_ => {panic!("error");},
+		};
+
+		self.real_task = real_task;
+		result
 	}
 
 	/*
 		TODO：这个部分还需要继续了解
 		OverrideStatus
 	*/
-	pub fn override_status0(&mut self)->TaskStatus{
-		TaskStatus::Inactive
-	}
 	#[allow(unused_variables)]
-	pub fn override_status1(&mut self, status:TaskStatus)->TaskStatus{
-		TaskStatus::Inactive
+	pub fn override_status1(&mut self, status:TaskStatus, behavior_tree:&BehaviorTree)->TaskStatus{
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let result = match &mut real_task {
+			RealTaskType::Composite(composite) => composite.override_status1(status,self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.override_status1(status,self, behavior_tree),
+			_ => {panic!("error");},
+		};
+
+		self.real_task = real_task;
+		result
 	}
 
-	pub fn on_conditional_abort(&mut self, index:u32){
+	pub fn on_conditional_abort(&mut self, index:u32,behavior_tree:&BehaviorTree){
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let result = match &mut real_task {
+			RealTaskType::Composite(composite) => composite.on_conditional_abort(index,self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_conditional_abort(index,self, behavior_tree),
+			_ => {panic!("error");},
+		};
 
+		self.real_task = real_task;
+		result
 	}
 
-	pub fn on_cancel_conditional_abort(&mut self, index:u32){
+	pub fn on_cancel_conditional_abort(&mut self, index:u32,behavior_tree:&BehaviorTree){
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let result = match &mut real_task {
+			RealTaskType::Composite(composite) => composite.on_cancel_conditional_abort(index,self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_cancel_conditional_abort(index,self, behavior_tree),
+			_ => {panic!("error");},
+		};
 
+		self.real_task = real_task;
+		result
 	}
 
-	pub fn children(&self)->Vec<Rc<Box<TaskProxy>>>{
-		self.children.clone()
+	pub fn children(&self)->&Vec<Rc<Box<TaskProxy>>>{
+		&self.children
 	}
 	
 	pub fn add_child(&mut self, task:&Rc<Box<TaskProxy>>){
