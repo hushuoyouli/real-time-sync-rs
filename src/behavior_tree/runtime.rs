@@ -1,8 +1,94 @@
 use std::{collections::HashMap, rc::{Rc}};
-
 use super::consts::{TaskStatus, AbortType};
-use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,
-	IParser,IBehaviorTree,IRebuildSyncDataCollector,SyncDataCollector};
+
+
+
+pub trait IUnit {
+	fn id(&self) -> u64;
+}
+
+pub trait IClock{
+	fn timestamp_in_mill(&self)->u64;
+}
+
+pub struct TaskRuntimeData{
+
+}
+
+pub struct SyncDataCollector {
+	datas:Vec<Vec<u8>>,
+}
+
+impl SyncDataCollector{
+	pub fn new() -> Rc<Box<Self>>{
+		Rc::new(Box::new(Self{
+			datas: Vec::new(),
+		}))
+	}
+
+	pub fn add_data(&mut self, data:Vec<u8>){
+		self.datas.push(data);
+	}
+	pub fn get_and_clear(&mut self)->Vec<Vec<u8>>{
+		let datas = self.datas.clone();
+		self.datas.clear();
+		datas
+	}
+}
+
+pub trait IRebuildSyncDataCollector{
+
+	fn stack(&mut self, behavior_tree: &dyn IBehaviorTree, data: &StackRuntimeData);
+
+	//	需要同步的action的回调
+	fn action(&mut self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, datas:&Vec<Vec<u8>>);
+
+	//	并发任务相关的执行栈恢复同步数据
+	fn parallel(&mut self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, child_stack_runtime_datas:Vec<&StackRuntimeData>);
+}
+
+
+pub trait IBehaviorTree{
+	fn id(&self)->u64;
+
+	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>;
+	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>;
+	fn update(&mut self);
+	fn is_runnning(&self)->bool;
+
+	fn unit(&self)->Rc<Box<dyn IUnit>>;
+	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector);
+	fn clock(&self)->Rc<Box<dyn IClock>>;
+}
+
+pub trait IRuntimeEventHandle {
+	fn post_initialize(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:u64);
+	//	树结束
+	fn post_on_complete(&self, behavior_tree:&dyn IBehaviorTree, now_timestamp_in_milli:u64);
+
+	//	同步需要
+	fn new_stack(&self, behavior_tree:&dyn IBehaviorTree, data:&StackRuntimeData);
+	fn remove_stack(&self, behavior_tree:&dyn IBehaviorTree, data:&StackRuntimeData, now_timestamp_in_milli:u64);
+
+	//	以下3个回调可以用于追踪树的执行
+	fn pre_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy);
+	fn post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, now_timestamp_in_milli:u64, status:TaskStatus); //	任何的任务每帧调用的结果
+	fn post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, now_timestamp_in_milli:u64);
+
+	//	需要同步的action的回调，同步需要
+	fn action_post_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, datas:Vec<Vec<u8>>);
+	fn action_post_on_update(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, now_timestamp_in_milli:u64, status:TaskStatus, datas:Vec<Vec<u8>>); //	任何的任务每帧调用的结果
+	fn action_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, now_timestamp_in_milli:u64, datas:Vec<Vec<u8>>);
+
+	//	需要同步的并发任务进入调用，同步需要
+	fn parallel_pre_on_start(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy);
+	fn parallel_post_on_end(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, now_timestamp_in_milli:u64);
+
+	//	并发任务相关的执行栈的增加/减少，调用顺序是NewStack/ParallelAddChildStack/ParallelRemoveChildStack/RemoveStack
+	fn parallel_add_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, child_stack_runtime_data:&StackRuntimeData);
+	fn parallel_remove_child_stack(&self, behavior_tree:&dyn IBehaviorTree, task_runtime_data:&TaskRuntimeData, stack_runtime_data:&StackRuntimeData, task:&TaskProxy, child_stack_runtime_data:&StackRuntimeData, now_timestamp_in_milli:u64);
+	
+}
 
 #[allow(unused_variables)]
 pub trait IAction {
@@ -72,9 +158,15 @@ pub trait  IParentTask {
 }
 
 pub trait IComposite:IParentTask{
+	fn is_composite(&self)->bool{
+		true
+	}
 }
 
 pub trait IDecorator:IParentTask{
+	fn is_decorator(&self)->bool{
+		true
+	}
 }
 
 pub enum RealTaskType{
@@ -437,6 +529,75 @@ struct RunningStack{
     stack_runtime_data:Rc<Box<StackRuntimeData>>,
 }
 
+pub struct TaskAddData{
+	pub parent:Option<Rc<Box<TaskProxy>>>,
+	pub parent_index:i32,
+	pub depth:u32,
+	pub composite_parent_index:u32,
+	pub unit:Rc<Box<dyn IUnit>>,
+	pub error_task:i32,
+	pub error_task_name:String,
+}
+
+impl TaskAddData{
+	pub fn new(unit:&Rc<Box<dyn IUnit>>) -> Self{
+		Self{
+			parent:None,
+			parent_index:-1,
+			depth:0,
+			composite_parent_index:0,
+			unit:unit.clone(),
+			error_task:-1,
+			error_task_name:"".to_string(),
+		}
+	}
+}
+
+pub trait IParser{
+	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<Box<TaskProxy>>, Box<dyn std::error::Error>>;
+}
+
+struct EntryRoot{
+	execution_status:TaskStatus,
+}
+
+impl  EntryRoot {
+	pub fn new() -> Self{
+		Self{
+			execution_status:TaskStatus::Inactive,
+		}
+	}
+}
+
+impl IParentTask for EntryRoot {
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree) {
+		self.execution_status = TaskStatus::Inactive;
+	}	
+
+	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool {
+		if let TaskStatus::Failure = self.execution_status {
+			true
+		}else{
+			false
+		}
+	}
+
+	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->u32{
+		0
+	}
+
+	fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){
+		self.execution_status = TaskStatus::Inactive;
+	}
+
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree) {
+		self.execution_status = child_status;
+	}
+}
+
+impl IDecorator for EntryRoot {
+}
+
 pub struct BehaviorTree{
     id: u64,
 
@@ -450,6 +611,9 @@ pub struct BehaviorTree{
 	non_instant_task_status:Vec<TaskStatus>,
 	conditional_reevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
 	conditional_reevaluate_map:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
+
+	parent_composite_index:Vec<u32>,
+	child_conditional_index:Vec<Vec<u32>>,
 
     is_running:bool,
 	initialize_first_stack_and_first_task:bool, //	是否需要初始化第一个执行栈和第一个任务
@@ -483,6 +647,8 @@ impl BehaviorTree{
 			non_instant_task_status: Vec::new(),
 			conditional_reevaluate: Vec::new(),
 			conditional_reevaluate_map: HashMap::new(),
+			parent_composite_index:Vec::new(),
+			child_conditional_index:Vec::new(),
 			is_running: false,
 			initialize_first_stack_and_first_task: false,
 			execution_status: TaskStatus::Inactive,
@@ -498,6 +664,21 @@ impl BehaviorTree{
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
 		}))
+	}
+
+	fn initialize_for_base(&mut self, parser:&dyn IParser) ->Result<(), Box<dyn std::error::Error>>{
+		self.task_list.clear();
+		self.parent_index.clear();
+		self.children_index.clear();
+		self.relative_child_index.clear();
+		self.parent_composite_index.clear();
+		self.child_conditional_index.clear();
+		self.root_task = None;
+		let taskAddData: TaskAddData = TaskAddData::new(&self.unit);
+
+		let root_task = parser.deserialize(&self.config, &taskAddData)?;
+
+		Ok(())
 	}
 
 	fn initialize(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
