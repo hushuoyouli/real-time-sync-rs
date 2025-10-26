@@ -248,7 +248,11 @@ impl TaskProxy {
 
 	//	IParentTask接口
 	fn can_run_parallel_children(&self)->bool{
-		false
+		match &self.real_task {
+			RealTaskType::Composite(composite) => composite.can_run_parallel_children(),
+			RealTaskType::Decorator(decorator) => false,
+			_ =>{panic!("error"); false},
+		}
 	}
 	/*
 		跟是否可以并发有关的
