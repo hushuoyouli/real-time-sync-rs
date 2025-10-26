@@ -1,4 +1,4 @@
-use  std::rc::Rc;
+use  std::rc::{Rc, Weak};
 use super::consts::{TaskStatus, AbortType};
 
 pub trait IUnit {
@@ -24,8 +24,8 @@ pub trait ITask{
 	fn owner(&self)->Rc<Box<dyn IBehaviorTree>>;
 	fn set_owner(&mut self, owner:Rc<Box<dyn IBehaviorTree>>);
 	//	父节点
-	fn parent(&self)->Rc<Box<dyn IParentTask>>;
-	fn set_parent(&mut self, parent:Rc<Box<dyn IParentTask>>);
+	fn parent(&self)->Option<Rc<Box<dyn IParentTask>>>;
+	fn set_parent(&mut self, parent:Weak<Box<dyn IParentTask>>);
 	//	ID
 	fn id(&self)->u32;
 	fn set_id(&mut self, id:u32);

@@ -118,7 +118,7 @@ impl IBehaviorTree for BehaviorTree{
 					}
 				},
 				TaskType::Composite(composite) => {
-					let composite = Rc::get_mut(composite).unwrap();
+					let composite: &mut Box<dyn IComposite> = Rc::get_mut(composite).unwrap();
 					if !composite.disabled() {
 						composite.on_awake();
 					}
@@ -138,7 +138,7 @@ impl IBehaviorTree for BehaviorTree{
 		let now_timestamp_in_milli = self.clock.timestamp_in_mill();
 		self.runtime_event_handle.post_initialize(self, now_timestamp_in_milli);
 		self.initialize_first_stack_and_first_task = true;
-		
+
 		Ok(())
 	}
 
