@@ -7,28 +7,34 @@ use super::interface::{IUnit,TaskRuntimeData,IClock,IRuntimeEventHandle,TaskType
 
 
 pub trait IAction {
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 
 	//	默认不需要同步
 	fn is_sync_to_client(&self)->bool{
 		false
 	}
-	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 }
 
 pub trait IConditional{
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
-    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree);
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
 }
 
-pub trait IComposite{
+
+pub trait  IParentTask {
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}   
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+
 	fn can_run_parallel_children(&self)->bool{ false }
 	/*
 		跟是否可以并发有关的
@@ -51,15 +57,16 @@ pub trait IComposite{
 		TODO：这个部分还需要继续了解
 		OverrideStatus
 	*/
-	fn override_status0(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{TaskStatus::Inactive}
 	fn override_status1(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
 
-	fn on_conditional_abort(&mut self, index:u32){}
-	fn on_cancel_conditional_abort(&mut self, index:u32){} //当Abort取消的时候，会调用这个接口
+	fn on_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn on_cancel_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){} //当Abort取消的时候，会调用这个接口
 }
 
-pub trait IDecorator{
+pub trait IComposite:IParentTask{
+}
 
+pub trait IDecorator:IParentTask{
 }
 
 pub enum RealTaskType{
