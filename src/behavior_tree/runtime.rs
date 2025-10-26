@@ -214,7 +214,13 @@ impl TaskProxy {
 
 	//is_sync_to_client,rebuild_sync_datas,set_sync_data_collector,sync_data_collector这几个接口是提供给action用于同步的
 	pub fn is_sync_to_client(&self)->bool{
-		false
+		match &self.real_task {
+			RealTaskType::Action(action) => action.is_sync_to_client(),
+			_ => {
+					panic!("error");
+					false
+				},
+		}
 	}
 	
 	pub fn rebuild_sync_datas(&self){
