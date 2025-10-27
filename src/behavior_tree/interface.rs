@@ -24,9 +24,22 @@ impl StackRuntimeData{
 }
 
 pub struct TaskRuntimeData{
-
+	pub task_id:i32,
+	pub start_time:u64,
+	pub execute_id:u32,
+	pub active_stack_id:usize,
 }
 
+impl TaskRuntimeData{
+	pub fn new(task_id:i32, start_time:u64, execute_id:u32, active_stack_id:usize) -> Self{
+		Self{
+			task_id,
+			start_time,
+			execute_id,
+			active_stack_id,
+		}
+	}
+}
 
 pub struct RunningStack{
     pub stack_id:usize,
@@ -39,6 +52,18 @@ impl  RunningStack {
 			stack_id,
 			stack: Vec::with_capacity(stack_capacity),
 		}
+	}
+
+	pub fn len(&self)->usize{
+		self.stack.len()
+	}
+
+	pub fn peak(&self)->u32{
+		self.stack[self.stack.len() - 1]
+	}
+
+	pub fn push(&mut self, task_index:u32){
+		self.stack.push(task_index);
 	}
 }
 

@@ -542,12 +542,12 @@ pub struct BehaviorTree{
 	root_task:Option<Rc<Box<dyn ITaskProxy>>>,
 	clock:Weak<Box<dyn IClock>>,                            
 	stack_id:usize,
-    stack_id_to_stack_data:HashMap<usize, StackRuntimeData>,
+    stack_id_to_stack_data:HashMap<usize, Rc<Box<StackRuntimeData>>>,
 
-	task_datas:HashMap<u32, Rc<Box<TaskRuntimeData>>>,
+	task_datas:HashMap<i32, TaskRuntimeData>,
 
 	stack_id_to_parallel_task_id:HashMap<u32, u32>,
-	parallel_task_id_to_stack_ids:HashMap<u32, Vec<u32>>,
+	parallel_task_id_to_stack_ids:HashMap<i32, Vec<u32>>,
 
 	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
 	initialize_for_base_flag:bool,
@@ -555,6 +555,7 @@ pub struct BehaviorTree{
 	
 	parser:Rc<Box<dyn IParser>>,
 	self_weak_ref:Option<Weak<Box<dyn IBehaviorTree>>>,
+	task_execute_id:u32,
 }
 
 
@@ -590,6 +591,7 @@ impl BehaviorTree{
 			initialize_for_base_flag: false,
 			parser:parser,
 			self_weak_ref:None,
+			task_execute_id:1,
 		};
 
 		let mut behavior_tree:Rc<Box<dyn IBehaviorTree>> = Rc::new(Box::new(behavior_tree));
@@ -707,12 +709,147 @@ impl BehaviorTree{
 		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
 		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
 		self.runtime_event_handle.new_stack(self, &stack_data);
-		self.stack_id_to_stack_data.insert(stack_id, stack_data);
+		self.stack_id_to_stack_data.insert(stack_id, Rc::new(Box::new(stack_data)));
 		return stack_index;
 	}
 
+	fn is_parent_task(&self, possible_parent:i32, possible_child:i32)->bool{
+		let mut  parent_index = 0;
+		let mut  child_index = possible_child;
+
+		while child_index != -1 {
+			parent_index = self.parent_index[child_index as usize];
+			if parent_index == possible_parent {
+				return true;
+			}
+
+			child_index = parent_index;
+		}
+
+		false
+	}
+
+	fn next_task_execute_id(&mut self) -> u32{
+		let task_execute_id = self.task_execute_id;
+		self.task_execute_id += 1;
+		task_execute_id
+	}
+
 	fn push_task(&mut self, stack_index:usize, task_index:u32){
-		
+		if !self.is_running || stack_index >= self.active_stack.len() {
+			return
+		}
+	
+		if self.active_stack[stack_index].len() == 0 || self.active_stack[stack_index].peak() != task_index {
+			{
+				let stack = Rc::get_mut(&mut self.active_stack[stack_index]).unwrap();
+				stack.push(task_index);
+			}
+
+			self.non_instant_task_status[stack_index] = TaskStatus::Running;
+			
+			let task = &mut self.task_list.get(task_index as usize).unwrap();
+	        let mut task = task.clone();
+			let stack = &mut self.active_stack[stack_index];
+			let stack_data: Rc<Box<StackRuntimeData>> = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+			let now_timestamp= self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+			let task_execute_id= self.next_task_execute_id();
+	
+			let task_runtime_data= TaskRuntimeData::new(task.id(), now_timestamp, task_execute_id, stack_data.stack_id);
+			self.task_datas.insert(task.id(), task_runtime_data);
+	
+			//	TODO:这里需要截获初始化的数据？
+			{
+				let task = Rc::get_mut(&mut task).unwrap();
+				let task: &dyn ITaskProxy = task.as_ref();
+				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+			}
+			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
+			if task.is_implements_iparenttask() {
+				if task.can_run_parallel_children() {
+					let task = Rc::get_mut(&mut task).unwrap();
+					let task: &dyn ITaskProxy = task.as_ref();
+					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+				}
+			}
+	
+			//	先清理数据
+			if task.is_implements_iaction() {
+				if task.is_sync_to_client() {
+					let mut task = task.clone();
+					let task = Rc::get_mut(&mut task).unwrap();
+					let task: &mut dyn ITaskProxy = task.as_mut();
+					let mut sync_data_collector = task.sync_data_collector().unwrap();
+					Rc::get_mut(&mut sync_data_collector).unwrap().get_and_clear();
+					
+					//task.sync_data_collector().unwrap().clone().get_and_clear();
+					//task.sync_data_collector().unwrap().get_and_clear();
+				}
+			}
+
+			{
+				let task = Rc::get_mut(&mut task).unwrap();
+				task.on_start();
+			}
+
+			if task.is_implements_iaction() {
+				//action := task.(iface.IAction)
+				if task.is_sync_to_client() {
+					let mut sync_data_collector = task.sync_data_collector().unwrap();
+					let datas = Rc::get_mut(&mut sync_data_collector).unwrap().get_and_clear();
+
+					let task = Rc::get_mut(&mut task).unwrap();
+					let task: &dyn ITaskProxy = task.as_ref();
+					let mut behavior_tree = self.self_weak_ref.as_ref().unwrap().upgrade().unwrap();
+					let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
+					let behavior_tree: &dyn IBehaviorTree = behavior_tree.as_ref();
+					self.runtime_event_handle.action_post_on_start(behavior_tree, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task, datas);
+				}
+			}
+	
+			if task.is_implements_iparenttask() {
+				//	可以并发的父节点有特殊处理
+				
+				if task.can_run_parallel_children() {
+					self.parallel_task_id_to_stack_ids.insert(task.id(), Vec::new());
+					//p.parallelTaskID2StackIDs[task.ID()] = make([]int, 0)
+				}
+
+				 
+				if task.is_implements_icomposite() {
+					match task.abort_type() {
+						AbortType::None => (),
+						_ => {
+						    for conditional_reevaluate in self.conditional_reevaluate.iter_mut(){
+
+							}
+
+							()
+						},
+					}
+					/*
+					if task.abort_type() != iface.None {
+						for _, conditionalReevaluate := range p.conditionalReevaluate {
+							if p.IsParentTask(taskIndex, conditionalReevaluate.index) {
+								conditionalReevaluate.compositeIndex = taskIndex
+							}
+						}
+	
+						if compositeTask.AbortType() == iface.LowerPriority {
+							childConditionalIndexes := p.childConditionalIndex[compositeTask.ID()]
+							for _, childConditionalIndex := range childConditionalIndexes {
+								var conditionalReevaluate *ConditionalReevaluate
+								if p.conditionalReevaluateMap.TryGetValue(childConditionalIndex, &conditionalReevaluate) {
+									conditionalReevaluate.compositeIndex = -1
+								}
+							}
+						}
+					}
+					 */
+				}
+				
+			}
+		}
 	}
 }
 
