@@ -107,7 +107,12 @@ impl JsonParser{
 
         let task_proxy:Rc<Box<dyn ITaskProxy>> = Rc::new(Box::new(task_proxy));
         let mut id_2_task = id_2_task.upgrade().unwrap();
-        Rc::get_mut(&mut id_2_task).unwrap().insert(task_proxy.id(), Rc::downgrade(&task_proxy));
+        let id_2_task  = Rc::get_mut(&mut id_2_task).unwrap();
+        if id_2_task.contains_key(&task_proxy.id()){
+            return Err("ID already exists".into());
+        }
+        
+        id_2_task.insert(task_proxy.id(), Rc::downgrade(&task_proxy));
         Ok(task_proxy)
     }
 
