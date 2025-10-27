@@ -662,12 +662,13 @@ pub struct BehaviorTree{
 	initialize_for_base_flag:bool,
     
 	self_weak_ref:Option<Weak<Box<Self>>>,
+	parser:Rc<Box<dyn IParser>>,
 }
 
 #[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
-		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
+		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<Box<Self>>{
 			let mut  behavior_tree = 
 		Rc::new(Box::new(Self{
 			id,
@@ -696,6 +697,7 @@ impl BehaviorTree{
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
 			self_weak_ref: None,
+			parser:parser,
 		}));
 
 		let self_weak_ref = Rc::downgrade(&behavior_tree);
@@ -704,7 +706,7 @@ impl BehaviorTree{
 		behavior_tree
 	}
 
-	fn initialize_for_base(&mut self, parser:&dyn IParser) ->Result<(), Box<dyn std::error::Error>>{
+	fn initialize_for_base(&mut self) ->Result<(), Box<dyn std::error::Error>>{
 		self.task_list.clear();
 		self.parent_index.clear();
 		self.children_index.clear();
@@ -714,7 +716,7 @@ impl BehaviorTree{
 		self.root_task = None;
 		let taskAddData: TaskAddData = TaskAddData::new(&self.unit);
 
-		let root_task = parser.deserialize(&self.config, &taskAddData)?;
+		let root_task = self.parser.deserialize(&self.config, &taskAddData)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
 		root_proxy.set_owner(self.self_weak_ref.clone());
