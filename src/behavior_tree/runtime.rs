@@ -846,7 +846,6 @@ impl BehaviorTree{
 								},
 								_ => (),
 							};
-
 							()
 						},
 					}
@@ -854,6 +853,112 @@ impl BehaviorTree{
 				
 			}
 		}
+	}
+
+	fn reevaluate_conditional_tasks(&mut self){
+		let update_condition_indexes:Vec<Rc<Box<ConditionalReevaluate>>> = Vec::with_capacity(10);
+		//updateConditionIndexes := util.NewList[*ConditionalReevaluate](10)
+		let  mut conditional_reevaluatees = self.conditional_reevaluate.clone();
+		let len = conditional_reevaluatees.len();
+		for i in (0..len).rev(){
+			
+			let conditional_reevaluate = &mut conditional_reevaluatees[i];
+			if conditional_reevaluate.composite_index != -1{
+				let condition_index = conditional_reevaluate.index;
+				let condition_status = conditional_reevaluate.task_status.clone();
+
+				let mut condition_task =&mut self.task_list[condition_index as usize];
+				let condition_task = Rc::get_mut(&mut condition_task).unwrap();
+				let new_condition_status = condition_task.on_update();
+
+				if new_condition_status != condition_status {
+
+				}
+			}
+		}
+/* 
+		for i := conditional_reevaluatees.len() - 1; i > -1; i-- {
+			conditionalReevaluate := p.conditionalReevaluate[i]
+			if conditionalReevaluate.compositeIndex != -1 {
+				conditionalIndex := conditionalReevaluate.index
+				conditionalStatus := p.taskList[conditionalIndex].OnUpdate()
+				if conditionalStatus != conditionalReevaluate.taskStatus {
+					compositeIndex := conditionalReevaluate.compositeIndex
+					for j := p.activeStack.Count() - 1; j > -1; j-- {
+						if p.activeStack[j].Len() > 0 {
+							taskIndex := p.activeStack[j].Peak()
+							if !p.IsParentTask(compositeIndex, taskIndex) {
+								continue
+							}
+
+							stackCount := p.activeStack.Count()
+							for taskIndex != -1 && taskIndex != compositeIndex && p.activeStack.Count() == stackCount {
+								status := iface.Failure
+								p.PopTask(taskIndex, j, status, false)
+								taskIndex = p.parentIndex[taskIndex]
+							}
+						}
+					}
+
+					for j := p.conditionalReevaluate.Count() - 1; j > i; j-- {
+						jConditionalReval := p.conditionalReevaluate[j]
+						if p.IsParentTask(compositeIndex, jConditionalReval.index) {
+							p.conditionalReevaluateMap.Remove(jConditionalReval.index)
+							p.conditionalReevaluate.RemoveAt(j)
+						}
+					}
+
+					//	原先abort过的要设置为原位
+					for i := updateConditionIndexes.Count() - 1; i > -1; i-- {
+						jConditionalReval := updateConditionIndexes[i]
+						if p.IsParentTask(compositeIndex, jConditionalReval.index) {
+							taskIndex := p.parentIndex[jConditionalReval.index]
+							for taskIndex != -1 && taskIndex != jConditionalReval.compositeIndex {
+								task := p.taskList[taskIndex].(iface.IParentTask)
+								task.OnCancelConditionalAbort()
+								taskIndex = p.parentIndex[taskIndex]
+							}
+							updateConditionIndexes.RemoveAt(i)
+						}
+					}
+
+					updateConditionIndexes.Add(conditionalReevaluate)
+					//是否需要把当前的conditionalReevaluate也删除掉？需要
+					p.conditionalReevaluateMap.Remove(conditionalIndex)
+					p.conditionalReevaluate.RemoveAt(i)
+					/*
+						for j := i - 1; j > -1; j-- {
+							jConditionalReval := p.conditionalReevaluate[j]
+							if jConditionalReval.compositeIndex == compositeIndex {
+								commonCompositeIndex := p.FindLCA(jConditionalReval.index, conditionalIndex)
+								if commonCompositeIndex != compositeIndex {
+									jConditionalReval.compositeIndex = commonCompositeIndex
+								}
+							}
+						}
+					*/
+					conditionalParentIndexes := util.NewList[int](10)
+					parentIndex := conditionalIndex
+					for {
+						parentIndex = p.parentIndex[parentIndex]
+						conditionalParentIndexes.Add(parentIndex)
+						if parentIndex == compositeIndex {
+							break
+						}
+					}
+
+					for j := conditionalParentIndexes.Count() - 1; j > -1; j-- {
+						parentTask := p.taskList[conditionalParentIndexes[j]].(iface.IParentTask)
+						if j == 0 {
+							parentTask.OnConditionalAbort(p.relativeChildIndex[conditionalIndex])
+						} else {
+							parentTask.OnConditionalAbort(p.relativeChildIndex[conditionalParentIndexes[j-1]])
+						}
+					}
+				}
+			}
+		} */
+		
 	}
 }
 
@@ -911,6 +1016,9 @@ impl IBehaviorTree for BehaviorTree{
 				self.push_task(0,0);
 				self.initialize_first_stack_and_first_task = false;
 			}
+
+
+			self.reevaluate_conditional_tasks();
 		}
 	}
 
