@@ -655,7 +655,7 @@ impl BehaviorTree{
 		Ok(())
 	}
 
-	fn initialize(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
+	fn initialize(&mut self)->Result<(), Box<dyn std::error::Error>>{
 		Ok(())
 	}
 }
@@ -669,12 +669,12 @@ impl IBehaviorTree for BehaviorTree{
 		self.id
 	}
 
-	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>{
+	fn enable(&mut self)->Result<(), Box<dyn std::error::Error>>{
 		if self.is_running{
 			return Err("BehaviorTree is already running".into());
 		}
 
-		self.initialize(parser)?;
+		self.initialize()?;
 
 		for task in self.task_list.iter_mut(){
 			let action = Rc::get_mut(task).unwrap();
