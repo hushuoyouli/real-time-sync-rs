@@ -789,9 +789,6 @@ impl BehaviorTree{
 					let task: &mut dyn ITaskProxy = task.as_mut();
 					let mut sync_data_collector = task.sync_data_collector().unwrap();
 					Rc::get_mut(&mut sync_data_collector).unwrap().get_and_clear();
-					
-					//task.sync_data_collector().unwrap().clone().get_and_clear();
-					//task.sync_data_collector().unwrap().get_and_clear();
 				}
 			}
 
