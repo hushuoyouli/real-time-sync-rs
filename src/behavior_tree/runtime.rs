@@ -714,7 +714,7 @@ impl BehaviorTree{
 	}
 
 	fn is_parent_task(&self, possible_parent:i32, possible_child:i32)->bool{
-		let mut  parent_index = 0;
+		let mut  parent_index;
 		let mut  child_index = possible_child;
 
 		while child_index != -1 {
