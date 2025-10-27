@@ -83,42 +83,43 @@ pub trait IRuntimeEventHandle {
 
 #[allow(unused_variables)]
 pub trait IAction {
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus;
-    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 
 	//	默认不需要同步
 	fn is_sync_to_client(&self)->bool{
 		false
 	}
-	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+
+	fn rebuild_sync_datas(&self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 }
 
 pub struct EmptyAction;
 impl IAction for EmptyAction {
-	fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{
+	fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{
 		TaskStatus::Success
 	}
 }
 
 #[allow(unused_variables)]
 pub trait IConditional{
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus;
-    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_update(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 }
 
 
 #[allow(unused_variables)]
 pub trait  IParentTask {
 	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
-    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}   
-    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+    fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}   
+    fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 
 	fn can_run_parallel_children(&self)->bool{ false }
 	/*
@@ -128,24 +129,24 @@ pub trait  IParentTask {
 		OverrideStatus
 	*/
 	//	CanRunParallelChildren	为false的时候调用
-	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-	fn  on_child_started0(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn  on_child_started0(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 	//	CanRunParallelChildren	为true的时候调用
-	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-	fn 	on_child_started1(&mut self,index:u32, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn 	on_child_started1(&mut self,index:u32, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
 
-	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->u32;
-	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool;
-	fn decorate(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
+	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->u32;
+	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->bool;
+	fn decorate(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{status}
 
 	/*
 		TODO：这个部分还需要继续了解
 		OverrideStatus
 	*/
-	fn override_status1(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->TaskStatus{status}
+	fn override_status1(&mut self, status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{status}
 
-	fn on_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
-	fn on_cancel_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){} //当Abort取消的时候，会调用这个接口
+	fn on_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn on_cancel_conditional_abort(&mut self, index:u32,task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){} //当Abort取消的时候，会调用这个接口
 }
 
 pub trait IComposite:IParentTask{
@@ -248,7 +249,7 @@ impl TaskProxy {
 	}
 
 
-	pub fn on_awake(&mut self,behavior_tree:&BehaviorTree){
+	pub fn on_awake(&mut self,behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_awake(self, behavior_tree),
@@ -596,7 +597,7 @@ impl IParentTask for EntryRoot {
 		self.execution_status = TaskStatus::Inactive;
 	}	
 
-	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->bool {
+	fn can_execute(&self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->bool {
 		if let TaskStatus::Failure = self.execution_status {
 			true
 		}else{
@@ -604,15 +605,15 @@ impl IParentTask for EntryRoot {
 		}
 	}
 
-	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree)->u32{
+	fn current_child_index(&self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree)->u32{
 		0
 	}
 
-	fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){
+	fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){
 		self.execution_status = TaskStatus::Inactive;
 	}
 
-	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree) {
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree) {
 		self.execution_status = child_status;
 	}
 }
