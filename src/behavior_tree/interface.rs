@@ -50,12 +50,12 @@ impl TaskAddData{
 
 pub trait IParser{
 	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>;
-	fn behavior_tree(&self) -> Option<Weak<Box<dyn IBehaviorTree>>>;
-	fn set_behavior_tree(&mut self, behavior_tree:Option<Weak<Box<dyn IBehaviorTree>>>);
 }
 
 
 pub trait IBehaviorTree{
+	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<Box<dyn IBehaviorTree>>>);
+	
 	fn id(&self)->u64;
 
 	fn enable(&mut self, parser:&dyn IParser)->Result<(), Box<dyn std::error::Error>>;
