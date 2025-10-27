@@ -18,7 +18,7 @@ pub struct TaskRuntimeData{
 }
 
 
-struct RunningStack{
+pub struct RunningStack{
     stack_id:u32,
     stack:Vec<u32>,
     stack_runtime_data:Rc<Box<StackRuntimeData>>,
