@@ -976,6 +976,17 @@ impl BehaviorTree{
 			self.non_instant_task_status.remove(stack_index);
 		}
 	}
+
+	fn remove_child_conditional_reevaluate(&mut self, composite_index:i32){
+		for i in (0..self.conditional_reevaluate.len()).rev(){
+			let conditional_reevaluate = self.conditional_reevaluate[i].clone();
+			if self.is_parent_task(composite_index, conditional_reevaluate.composite_index){
+				let conditional_index = conditional_reevaluate.index;
+				self.conditional_reevaluate_map.remove(&(conditional_index as u32));
+				self.conditional_reevaluate.remove(i);
+			}
+		}
+	}
 }
 
 impl IBehaviorTree for BehaviorTree{
