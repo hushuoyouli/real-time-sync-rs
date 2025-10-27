@@ -119,16 +119,16 @@ pub trait ITaskProxy{
 	fn set_disabled(&mut self, disabled:bool);
 
 	fn unit(&self)->Rc<Box<dyn IUnit>>;
-	fn on_awake(&mut self,behavior_tree:&dyn IBehaviorTree);
-    fn on_start(&mut self,behavior_tree:&dyn IBehaviorTree);
-    fn on_end(&mut self,behavior_tree:&dyn IBehaviorTree);
-    fn on_complete(&mut self,behavior_tree:&dyn IBehaviorTree);
+	fn on_awake(&mut self);
+    fn on_start(&mut self);
+    fn on_end(&mut self);
+    fn on_complete(&mut self);
 
 	//提供给Action与Conditional使用
-	fn on_update(&mut self,behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+	fn on_update(&mut self)->TaskStatus;
 	fn is_sync_to_client(&self)->bool;
 	
-	fn rebuild_sync_datas(&self,behavior_tree:&dyn IBehaviorTree);
+	fn rebuild_sync_datas(&self);
 	
 	fn set_sync_data_collector(&mut self, collector:Option<Rc<Box<SyncDataCollector>>>);
 	fn sync_data_collector(&self)->Option<Rc<Box<SyncDataCollector>>>;
@@ -142,28 +142,28 @@ pub trait ITaskProxy{
 		OverrideStatus
 	*/
 	//	CanRunParallelChildren	为false的时候调用
-	fn  on_child_executed1(&mut self, child_status:TaskStatus,behavior_tree:&dyn IBehaviorTree);
+	fn  on_child_executed1(&mut self, child_status:TaskStatus);
 
-	fn  on_child_started0(&mut self,behavior_tree:&dyn IBehaviorTree);
+	fn  on_child_started0(&mut self);
 	//	CanRunParallelChildren	为true的时候调用
-	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus,behavior_tree:&dyn IBehaviorTree);
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus);
 
-	fn 	on_child_started1(&mut self,index:u32,behavior_tree:&dyn IBehaviorTree);
+	fn 	on_child_started1(&mut self,index:u32);
 
-	fn current_child_index(&self, behavior_tree:&dyn IBehaviorTree)->u32;
+	fn current_child_index(&self)->u32;
 
-	fn can_execute(&self, behavior_tree:&dyn IBehaviorTree)->bool;
+	fn can_execute(&self)->bool;
 	
-	fn decorate(&mut self, status:TaskStatus, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+	fn decorate(&mut self, status:TaskStatus)->TaskStatus;
 
 	/*
 		TODO：这个部分还需要继续了解
 		OverrideStatus
 	*/
-	fn override_status1(&mut self, status:TaskStatus, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
-	fn on_conditional_abort(&mut self, index:u32,behavior_tree:&dyn IBehaviorTree);
+	fn override_status1(&mut self, status:TaskStatus)->TaskStatus;
+	fn on_conditional_abort(&mut self, index:u32);
 
-	fn on_cancel_conditional_abort(&mut self, index:u32,behavior_tree:&dyn IBehaviorTree);
+	fn on_cancel_conditional_abort(&mut self, index:u32);
 
 	fn children(&self)->&Vec<Rc<Box<dyn ITaskProxy>>>;
 
