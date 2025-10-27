@@ -101,18 +101,32 @@ impl JsonParser{
             }
         }
 
+
+
         if task_proxy.id() == 0{
             return Err("ID is 0".into());
         }
 
-        let task_proxy:Rc<Box<dyn ITaskProxy>> = Rc::new(Box::new(task_proxy));
+        let mut task_proxy:Rc<Box<dyn ITaskProxy>> = Rc::new(Box::new(task_proxy));
+        let id_2_task_bak= id_2_task.clone();
+
         let mut id_2_task = id_2_task.upgrade().unwrap();
         let id_2_task  = Rc::get_mut(&mut id_2_task).unwrap();
         if id_2_task.contains_key(&task_proxy.id()){
             return Err("ID already exists".into());
         }
-        
+
         id_2_task.insert(task_proxy.id(), Rc::downgrade(&task_proxy));
+
+        match task_json["Children"].as_array(){
+            Some(children) => 
+            for child in children.iter(){
+                let child = self.generate_task_proxy(child, unit, id_2_task_bak.clone())?;
+                Rc::get_mut(&mut task_proxy).unwrap().add_child(&child);
+            },
+            None => (),
+        };
+
         Ok(task_proxy)
     }
 
