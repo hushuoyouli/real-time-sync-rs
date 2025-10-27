@@ -218,6 +218,87 @@ pub trait IRuntimeEventHandle {
 }
 
 
+#[allow(unused_variables)]
+pub trait IAction {
+	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+    fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+
+	//	默认不需要同步
+	fn is_sync_to_client(&self)->bool{
+		false
+	}
+
+	fn rebuild_sync_datas(&self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+}
+
+#[allow(unused_variables)]
+pub trait IConditional{
+	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+    fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+}
+
+
+#[allow(unused_variables)]
+pub trait  IParentTask {
+	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}   
+    fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+
+	fn can_run_parallel_children(&self)->bool{ false }
+	/*
+		跟是否可以并发有关的
+		OnChildExecuted
+		OnChildStarted
+		OverrideStatus
+	*/
+	//	CanRunParallelChildren	为false的时候调用
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn  on_child_started0(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	//	CanRunParallelChildren	为true的时候调用
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn 	on_child_started1(&mut self,index:u32, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+
+	fn current_child_index(&self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->u32;
+	fn can_execute(&self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->bool;
+	fn decorate(&mut self, status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{status}
+
+	/*
+		TODO：这个部分还需要继续了解
+		OverrideStatus
+	*/
+	fn override_status1(&mut self, status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{status}
+
+	fn on_conditional_abort(&mut self, index:u32,task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn on_cancel_conditional_abort(&mut self, index:u32,task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){} //当Abort取消的时候，会调用这个接口
+}
+
+pub trait IComposite:IParentTask{
+	fn is_composite(&self)->bool{
+		true
+	}
+}
+
+pub trait IDecorator:IParentTask{
+	fn is_decorator(&self)->bool{
+		true
+	}
+}
+
+pub enum RealTaskType{
+	Action(Box<dyn IAction>),
+	Conditional(Box<dyn IConditional>),
+	Composite(Box<dyn IComposite>),
+	Decorator(Box<dyn IDecorator>),
+}
+
+
 
 
 
