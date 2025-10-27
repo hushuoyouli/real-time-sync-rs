@@ -1,6 +1,5 @@
-use std::{collections::HashMap, rc::{Rc}};
+use std::{collections::HashMap, rc::{Rc,Weak}};
 use super::consts::{TaskStatus, AbortType};
-
 
 
 pub trait IUnit {
@@ -189,6 +188,7 @@ pub struct TaskProxy{
 	children:Vec<Rc<Box<TaskProxy>>>,
 	real_task:RealTaskType,
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
+	parent:Option<Weak<Box<TaskProxy>>>,
 }
 
 #[allow(unused_variables)]
@@ -204,9 +204,17 @@ impl TaskProxy {
 			children: Vec::new(),
 			real_task:real_task,
 			sync_data_collector: None,
+			parent: None,
 		}
 	}
 
+	pub fn set_parent(&mut self, parent:Option<Weak<Box<TaskProxy>>>){
+		self.parent = parent;
+	}
+
+	pub fn parent(&self)->Option<Weak<Box<TaskProxy>>>{
+		self.parent.clone()
+	}
 
 	pub fn corresponding_type(&self)->String{
 		self.corresponding_type.clone()
@@ -614,7 +622,7 @@ pub struct BehaviorTree{
     task_list: Vec<Rc<Box<TaskProxy>>>,
     parent_index:Vec<i32>,
 
-    children_index :Vec<Vec<u32>>,
+    children_index :Vec<Vec<i32>>,
 	relative_child_index:Vec<i32>,
 
     active_stack :Vec<Rc<Box<RunningStack>>>,
@@ -623,7 +631,7 @@ pub struct BehaviorTree{
 	conditional_reevaluate_map:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
 
 	parent_composite_index:Vec<i32>,
-	child_conditional_index:Vec<Vec<u32>>,
+	child_conditional_index:Vec<Vec<i32>>,
 
     is_running:bool,
 	initialize_first_stack_and_first_task:bool, //	是否需要初始化第一个执行栈和第一个任务
@@ -718,8 +726,37 @@ impl BehaviorTree{
 		Ok(())
 	}
 
-	fn parse_child_task(&mut self, child_task:&Rc<Box<TaskProxy>>, parent_task:&Rc<Box<TaskProxy>>, parent_composite_index:i32)->Result<(), Box<dyn std::error::Error>>{
-		
+	fn parse_child_task(&mut self, child_task:&mut Rc<Box<TaskProxy>>, parent_task:&Rc<Box<TaskProxy>>, mut parent_composite_index: i32)->Result<(), Box<dyn std::error::Error>>{
+		let index = self.task_list.len() as i32;
+		let parent_index = parent_task.id();
+
+		self.children_index[parent_index as usize].push(index);
+		self.relative_child_index.push(self.children_index[parent_index as usize].len() as i32 - 1);
+		self.task_list.push(child_task.clone());
+		self.parent_index.push(parent_task.id());
+		self.parent_composite_index.push(parent_composite_index);
+		self.child_conditional_index.push(Vec::with_capacity(10));
+		self.children_index.push(Vec::with_capacity(10));
+
+		Rc::get_mut(child_task).unwrap().set_id(index);
+		Rc::get_mut(child_task).unwrap().set_parent(Some(Rc::downgrade(parent_task)));
+
+		if child_task.is_implements_iparenttask(){
+			if child_task.is_implements_icomposite(){
+				parent_composite_index = child_task.id();
+			}
+
+			let mut children = Rc::get_mut(child_task).unwrap().children_mut().clone();
+			for child in children.iter_mut(){
+				self.parse_child_task(child, child_task, parent_composite_index)?;
+			}
+		}else{
+			if child_task.is_implements_iconditional(){
+				if parent_composite_index != -1{
+					self.child_conditional_index[parent_composite_index as usize].push(child_task.id());
+				}
+			}
+		}
 		Ok(())
 	}
 
