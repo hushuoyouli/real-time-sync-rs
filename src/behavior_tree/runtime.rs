@@ -390,15 +390,15 @@ impl ITaskProxy for TaskProxy {
 		result
 	}
 
-	fn on_cancel_conditional_abort(&mut self, index:u32){
+	fn on_cancel_conditional_abort(&mut self){
 		let mut behavior_tree = self.owner.as_ref().unwrap().upgrade().unwrap();
 		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
 		let behavior_tree: &dyn IBehaviorTree = behavior_tree.as_ref();
 
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
-			RealTaskType::Composite(composite) => composite.on_cancel_conditional_abort(index,self, behavior_tree),
-			RealTaskType::Decorator(decorator) => decorator.on_cancel_conditional_abort(index,self, behavior_tree),
+			RealTaskType::Composite(composite) => composite.on_cancel_conditional_abort(self, behavior_tree),
+			RealTaskType::Decorator(decorator) => decorator.on_cancel_conditional_abort(self, behavior_tree),
 			_ => {panic!("error");},
 		};
 
@@ -860,7 +860,7 @@ impl BehaviorTree{
 	}
 
 	fn reevaluate_conditional_tasks(&mut self){
-		let update_condition_indexes:Vec<Rc<Box<ConditionalReevaluate>>> = Vec::with_capacity(10);
+		let mut update_condition_indexes:Vec<Rc<Box<ConditionalReevaluate>>> = Vec::with_capacity(10);
 		//updateConditionIndexes := util.NewList[*ConditionalReevaluate](10)
 		let  mut conditional_reevaluatees = self.conditional_reevaluate.clone();
 		let len = conditional_reevaluatees.len();
@@ -890,94 +890,59 @@ impl BehaviorTree{
 								self.pop_task(task_index, j, status, false);
 								task_index = self.parent_index[task_index as usize];
 							}
+
+							for j in (i..self.conditional_reevaluate.len()).rev(){
+								let jConditionalReval = self.conditional_reevaluate[j].clone();
+								if self.is_parent_task(composite_index, jConditionalReval.index) {
+									let jIndex = jConditionalReval.index as u32;
+									self.conditional_reevaluate_map.remove(&jIndex);
+									self.conditional_reevaluate.remove(j);
+								}
+							}
+
+							//	原先abort过的要设置为原位
+							for j in (0..update_condition_indexes.len()).rev(){
+								let conditional_reevaluate = &update_condition_indexes[j];
+								if self.is_parent_task(composite_index, conditional_reevaluate.index) {
+									let mut task_index = self.parent_index[conditional_reevaluate.index as usize];
+									while task_index != -1 && task_index != conditional_reevaluate.composite_index {
+										let mut task = &mut self.task_list[task_index as usize];
+										let task = Rc::get_mut(&mut task).unwrap();
+										task.on_cancel_conditional_abort();
+										task_index = self.parent_index[task_index as usize];
+									}
+								}
+
+								update_condition_indexes.remove(j as usize);
+							}
+
+							update_condition_indexes.push(conditional_reevaluate.clone());
+							//是否需要把当前的conditionalReevaluate也删除掉？需要
+							self.conditional_reevaluate_map.remove(&(condition_index as u32));
+							self.conditional_reevaluate.remove(i);
+
+							let mut conditional_parent_indexes :Vec<i32> = Vec::with_capacity(10);
+							let mut parent_index = condition_index;
+							while parent_index != composite_index {
+								parent_index = self.parent_index[parent_index as usize];
+								conditional_parent_indexes.push(parent_index);
+							}
+
+							for j in (0..conditional_parent_indexes.len()).rev(){
+								let parent_task = &mut self.task_list[conditional_parent_indexes[j] as usize];
+								let parent_task = Rc::get_mut(parent_task).unwrap();
+
+								if j == 0 {
+									parent_task.on_conditional_abort(self.relative_child_index[condition_index as usize] as u32);
+								}else{
+									parent_task.on_conditional_abort(self.relative_child_index[conditional_parent_indexes[j - 1] as usize] as u32);
+								}
+							}
 						}
 					}
 				}
 			}
 		}
-/* 
-		for i := conditional_reevaluatees.len() - 1; i > -1; i-- {
-			conditionalReevaluate := p.conditionalReevaluate[i]
-			if conditionalReevaluate.compositeIndex != -1 {
-				conditionalIndex := conditionalReevaluate.index
-				conditionalStatus := p.taskList[conditionalIndex].OnUpdate()
-				if conditionalStatus != conditionalReevaluate.taskStatus {
-					compositeIndex := conditionalReevaluate.compositeIndex
-					for j := p.activeStack.Count() - 1; j > -1; j-- {
-						if p.activeStack[j].Len() > 0 {
-							taskIndex := p.activeStack[j].Peak()
-							if !p.IsParentTask(compositeIndex, taskIndex) {
-								continue
-							}
-
-							stackCount := p.activeStack.Count()
-							for taskIndex != -1 && taskIndex != compositeIndex && p.activeStack.Count() == stackCount {
-								status := iface.Failure
-								p.PopTask(taskIndex, j, status, false)
-								taskIndex = p.parentIndex[taskIndex]
-							}
-						}
-					}
-
-					for j := p.conditionalReevaluate.Count() - 1; j > i; j-- {
-						jConditionalReval := p.conditionalReevaluate[j]
-						if p.IsParentTask(compositeIndex, jConditionalReval.index) {
-							p.conditionalReevaluateMap.Remove(jConditionalReval.index)
-							p.conditionalReevaluate.RemoveAt(j)
-						}
-					}
-
-					//	原先abort过的要设置为原位
-					for i := updateConditionIndexes.Count() - 1; i > -1; i-- {
-						jConditionalReval := updateConditionIndexes[i]
-						if p.IsParentTask(compositeIndex, jConditionalReval.index) {
-							taskIndex := p.parentIndex[jConditionalReval.index]
-							for taskIndex != -1 && taskIndex != jConditionalReval.compositeIndex {
-								task := p.taskList[taskIndex].(iface.IParentTask)
-								task.OnCancelConditionalAbort()
-								taskIndex = p.parentIndex[taskIndex]
-							}
-							updateConditionIndexes.RemoveAt(i)
-						}
-					}
-
-					updateConditionIndexes.Add(conditionalReevaluate)
-					//是否需要把当前的conditionalReevaluate也删除掉？需要
-					p.conditionalReevaluateMap.Remove(conditionalIndex)
-					p.conditionalReevaluate.RemoveAt(i)
-					/*
-						for j := i - 1; j > -1; j-- {
-							jConditionalReval := p.conditionalReevaluate[j]
-							if jConditionalReval.compositeIndex == compositeIndex {
-								commonCompositeIndex := p.FindLCA(jConditionalReval.index, conditionalIndex)
-								if commonCompositeIndex != compositeIndex {
-									jConditionalReval.compositeIndex = commonCompositeIndex
-								}
-							}
-						}
-					*/
-					conditionalParentIndexes := util.NewList[int](10)
-					parentIndex := conditionalIndex
-					for {
-						parentIndex = p.parentIndex[parentIndex]
-						conditionalParentIndexes.Add(parentIndex)
-						if parentIndex == compositeIndex {
-							break
-						}
-					}
-
-					for j := conditionalParentIndexes.Count() - 1; j > -1; j-- {
-						parentTask := p.taskList[conditionalParentIndexes[j]].(iface.IParentTask)
-						if j == 0 {
-							parentTask.OnConditionalAbort(p.relativeChildIndex[conditionalIndex])
-						} else {
-							parentTask.OnConditionalAbort(p.relativeChildIndex[conditionalParentIndexes[j-1]])
-						}
-					}
-				}
-			}
-		} */
-		
 	}
 }
 

@@ -212,7 +212,7 @@ pub trait ITaskProxy{
 	fn override_status1(&mut self, status:TaskStatus)->TaskStatus;
 	fn on_conditional_abort(&mut self, index:u32);
 
-	fn on_cancel_conditional_abort(&mut self, index:u32);
+	fn on_cancel_conditional_abort(&mut self);
 
 	fn children(&self)->&Vec<Rc<Box<dyn ITaskProxy>>>;
 
@@ -328,7 +328,7 @@ pub trait  IParentTask {
 	fn override_status1(&mut self, status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{status}
 
 	fn on_conditional_abort(&mut self, index:u32,task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
-	fn on_cancel_conditional_abort(&mut self, index:u32,task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){} //当Abort取消的时候，会调用这个接口
+	fn on_cancel_conditional_abort(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){} //当Abort取消的时候，会调用这个接口
 }
 
 pub trait IComposite:IParentTask{
