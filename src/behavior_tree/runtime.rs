@@ -717,6 +717,7 @@ impl BehaviorTree{
 		let root_task = parser.deserialize(&self.config, &taskAddData)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
+		root_proxy.set_owner(self.self_weak_ref.clone());
 		root_proxy.add_child(&root_task);
 		
 		self.root_task = Some(Rc::new(Box::new(root_proxy)));
@@ -761,7 +762,7 @@ impl BehaviorTree{
 		Rc::get_mut(child_task).unwrap().set_id(index);
 		Rc::get_mut(child_task).unwrap().set_parent(Some(Rc::downgrade(parent_task)));
 		Rc::get_mut(child_task).unwrap().set_owner(self.self_weak_ref.clone());
-		
+
 		if child_task.is_implements_iparenttask(){
 			if child_task.is_implements_icomposite(){
 				parent_composite_index = child_task.id();
