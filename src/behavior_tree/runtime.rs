@@ -189,6 +189,7 @@ pub struct TaskProxy{
 	real_task:RealTaskType,
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 	parent:Option<Weak<Box<TaskProxy>>>,
+	owner:Option<Weak<Box<BehaviorTree>>>,
 }
 
 #[allow(unused_variables)]
@@ -205,7 +206,16 @@ impl TaskProxy {
 			real_task:real_task,
 			sync_data_collector: None,
 			parent: None,
+			owner:None,
 		}
+	}
+
+	pub fn set_owner(&mut self, owner:Option<Weak<Box<BehaviorTree>>>){
+		self.owner = owner;
+	}
+
+	pub fn owner(&self)->Option<Weak<Box<BehaviorTree>>>{
+		self.owner.clone()
 	}
 
 	pub fn set_parent(&mut self, parent:Option<Weak<Box<TaskProxy>>>){
@@ -750,7 +760,8 @@ impl BehaviorTree{
 
 		Rc::get_mut(child_task).unwrap().set_id(index);
 		Rc::get_mut(child_task).unwrap().set_parent(Some(Rc::downgrade(parent_task)));
-
+		Rc::get_mut(child_task).unwrap().set_owner(self.self_weak_ref.clone());
+		
 		if child_task.is_implements_iparenttask(){
 			if child_task.is_implements_icomposite(){
 				parent_composite_index = child_task.id();
