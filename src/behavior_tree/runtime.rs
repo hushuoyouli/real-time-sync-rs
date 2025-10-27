@@ -592,7 +592,7 @@ impl BehaviorTree{
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
 		root_proxy.set_owner(self.self_weak_ref.clone());
 		root_proxy.add_child(&root_task);
-		
+				
 		self.root_task = Some(Rc::new(Box::new(root_proxy)));
 		self.task_list.push(self.root_task.clone().unwrap());
 		self.parent_index.push(-1);
