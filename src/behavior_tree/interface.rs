@@ -25,17 +25,18 @@ pub struct RunningStack{
 }
 
 pub struct TaskAddData{
-	pub parent:Option<Rc<Box<dyn ITaskProxy>>>,
+	pub parent:Option<Weak<Box<dyn ITaskProxy>>>,
 	pub parent_index:i32,
 	pub depth:u32,
 	pub composite_parent_index:u32,
 	pub unit:Weak<Box<dyn IUnit>>,
 	pub error_task:i32,
 	pub error_task_name:String,
+	pub owner:Weak<Box<dyn IBehaviorTree>>,
 }
 
 impl TaskAddData{
-	pub fn new(unit:&Weak<Box<dyn IUnit>>) -> Self{
+	pub fn new(unit:&Weak<Box<dyn IUnit>>,owner:&Weak<Box<dyn IBehaviorTree>>,) -> Self{
 		Self{
 			parent:None,
 			parent_index:-1,
@@ -44,6 +45,7 @@ impl TaskAddData{
 			unit:unit.clone(),
 			error_task:-1,
 			error_task_name:"".to_string(),
+			owner:owner.clone(),
 		}
 	}
 }

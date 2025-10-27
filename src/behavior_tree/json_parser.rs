@@ -131,19 +131,52 @@ impl JsonParser{
     }
 
     fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<Box<dyn IUnit>>, id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
-        let real_task = self.generate_task_proxy(task_json, unit, id_2_task)?;
-
-
-        Err("initialize_task not implemented".into())
+        self.generate_task_proxy(task_json, unit, id_2_task)
     }
 
+    fn initialize_parent_task(&self, task_proxy:&mut Rc<Box<dyn ITaskProxy>>, task_add_data:&mut TaskAddData){
+        let task_proxy_bak = task_proxy.clone();
+        let task_proxy = Rc::get_mut(task_proxy).unwrap();
+        task_proxy.set_parent(task_add_data.parent.clone());
+        task_proxy.set_owner(Some(task_add_data.owner.clone()));
+        
+        if task_proxy.is_implements_iparenttask(){
+            let old_parent = std::mem::replace(&mut task_add_data.parent, Some(Rc::downgrade(&task_proxy_bak)));
+
+            task_proxy.children_mut().iter_mut().for_each(|child|{
+                self.initialize_parent_task(child, task_add_data);
+            });
+        
+            task_add_data.parent = old_parent;
+        }
+
+    }
 }
 
 impl IParser for JsonParser{
     fn deserialize(&self, config:&Vec<u8>, unit:&Weak<Box<dyn IUnit>>,task_add_data:&TaskAddData) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
         let json: serde_json::Value = from_str(std::str::from_utf8(config)?).unwrap();
-        let root_task_json = json.get("RootTask").unwrap();
+        let root_task_json: &serde_json::Value = json.get("RootTask").ok_or("json文件缺少RootTask的配置")?;
+        let mut id_2_task = Rc::new(Box::new(HashMap::new()));
+        let root_task = self.initialize_task(root_task_json, unit, Rc::downgrade(&id_2_task))?;
 
-        Err("Not implemented".into())
+        let mut detached_tasks:Vec<Rc<Box<dyn ITaskProxy>>> = Vec::new();
+        if let Some(_) = json.get("DetachedTasksConfigs"){
+            let detached_tasks_configs = json.get("DetachedTasksConfigs").unwrap().as_array().unwrap();
+            for detached_task_config in detached_tasks_configs.iter(){
+                let detached_task = self.initialize_task(detached_task_config, unit, Rc::downgrade(&id_2_task))?;
+                detached_tasks.push(detached_task);
+            }
+        }
+        
+        //  初始化任务
+        for (_id, task_proxy) in Rc::get_mut(&mut id_2_task).unwrap().iter(){
+            let mut task_proxy = task_proxy.upgrade().unwrap();
+            let task_proxy = Rc::get_mut(&mut task_proxy).unwrap();
+            task_proxy.initialize_variables()?;
+        }
+
+
+        Ok(root_task)
     }
 }
