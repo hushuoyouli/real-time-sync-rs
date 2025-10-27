@@ -10,7 +10,17 @@ pub trait IClock{
 }
 
 pub struct StackRuntimeData{
+	pub stack_id:usize,
+	pub start_time:u64,
+}
 
+impl StackRuntimeData{
+	pub fn new(stack_id:usize, start_time:u64) -> Self{
+		Self{
+			stack_id,
+			start_time,
+		}
+	}
 }
 
 pub struct TaskRuntimeData{
@@ -19,9 +29,17 @@ pub struct TaskRuntimeData{
 
 
 pub struct RunningStack{
-    stack_id:u32,
-    stack:Vec<u32>,
-    stack_runtime_data:Rc<Box<StackRuntimeData>>,
+    pub stack_id:usize,
+    pub stack:Vec<u32>,
+}
+
+impl  RunningStack {
+	pub fn new(stack_id:usize,stack_capacity:usize) -> Self{
+		Self{
+			stack_id,
+			stack: Vec::with_capacity(stack_capacity),
+		}
+	}
 }
 
 pub struct TaskAddData{
@@ -306,6 +324,7 @@ pub enum RealTaskType{
 	Composite(Box<dyn IComposite>),
 	Decorator(Box<dyn IDecorator>),
 }
+
 
 
 

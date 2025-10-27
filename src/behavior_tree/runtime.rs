@@ -3,7 +3,7 @@ use super::consts::{TaskStatus, AbortType};
 use super::interface::{IUnit, IClock, ITaskProxy,IBehaviorTree, 
 	SyncDataCollector, RunningStack, TaskRuntimeData, 
 	IRuntimeEventHandle, IParser,TaskAddData, IRebuildSyncDataCollector, IAction, 
-	IConditional, RealTaskType, IParentTask,IDecorator};
+	IConditional, RealTaskType, IParentTask,IDecorator,StackRuntimeData};
 
 
 pub struct EmptyAction;
@@ -541,8 +541,8 @@ pub struct BehaviorTree{
 	unit:Weak<Box<dyn IUnit>>,
 	root_task:Option<Rc<Box<dyn ITaskProxy>>>,
 	clock:Weak<Box<dyn IClock>>,                            
-	stack_id:u32,
-    stack_id_to_stack_data:HashMap<u32, Rc<Box<RunningStack>>>,
+	stack_id:usize,
+    stack_id_to_stack_data:HashMap<usize, StackRuntimeData>,
 
 	task_datas:HashMap<u32, Rc<Box<TaskRuntimeData>>>,
 
@@ -690,6 +690,30 @@ impl BehaviorTree{
 		self.conditional_reevaluate_map.clear();
 		Ok(())
 	}
+
+	fn next_stack_id(&mut self) -> usize{
+		let stack_id = self.stack_id;
+		self.stack_id += 1;
+		stack_id
+	}
+
+	fn add_stack(&mut self) -> usize{
+		let stack_id = self.next_stack_id();
+		let stack_index = self.active_stack.len();
+		let stack = Rc::new(Box::new(RunningStack::new(stack_id,10)));
+		self.active_stack.push(stack.clone());
+		self.non_instant_task_status.push(TaskStatus::Inactive);
+
+		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
+		self.runtime_event_handle.new_stack(self, &stack_data);
+		self.stack_id_to_stack_data.insert(stack_id, stack_data);
+		return stack_index;
+	}
+
+	fn push_task(&mut self, stack_index:usize, task_index:u32){
+		
+	}
 }
 
 impl IBehaviorTree for BehaviorTree{
@@ -740,7 +764,13 @@ impl IBehaviorTree for BehaviorTree{
 	}
 
 	fn update(&mut self){
-
+		if self.is_running{
+			if self.initialize_first_stack_and_first_task{
+				self.add_stack();
+				self.push_task(0,0);
+				self.initialize_first_stack_and_first_task = false;
+			}
+		}
 	}
 
 	fn is_runnning(&self)->bool{
