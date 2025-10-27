@@ -944,6 +944,38 @@ impl BehaviorTree{
 			}
 		}
 	}
+
+	fn remove_stack(&mut self, stack_index:usize) {
+		if stack_index < self.active_stack.len() {
+			let stack = &self.active_stack[stack_index];
+			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+			let now_timestamp = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
+				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
+				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap();
+				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap();
+				let task = &mut self.task_list[task_runtime_data.task_id as usize].clone();
+				let task = Rc::get_mut(task).unwrap();
+				let task: &dyn ITaskProxy = task.as_ref();
+				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data, task, &stack_data, now_timestamp);
+				
+				self.stack_id_to_parallel_task_id.remove(&(stack_data.stack_id as u32));
+                let old_parallel_task_id_to_stack_ids = self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clone();
+				self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clear();
+				for stack_id in old_parallel_task_id_to_stack_ids.iter(){
+					if (*stack_id as usize) != stack_data.stack_id {
+						self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().push(*stack_id);
+					}
+				}
+			}
+
+			self.runtime_event_handle.remove_stack(self, &stack_data, now_timestamp);
+			self.stack_id_to_stack_data.remove(&stack_data.stack_id);
+			
+			self.active_stack.remove(stack_index);
+			self.non_instant_task_status.remove(stack_index);
+		}
+	}
 }
 
 impl IBehaviorTree for BehaviorTree{
