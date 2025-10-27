@@ -855,6 +855,10 @@ impl BehaviorTree{
 		}
 	}
 
+	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool){
+
+	}
+
 	fn reevaluate_conditional_tasks(&mut self){
 		let update_condition_indexes:Vec<Rc<Box<ConditionalReevaluate>>> = Vec::with_capacity(10);
 		//updateConditionIndexes := util.NewList[*ConditionalReevaluate](10)
@@ -869,10 +873,25 @@ impl BehaviorTree{
 
 				let mut condition_task =&mut self.task_list[condition_index as usize];
 				let condition_task = Rc::get_mut(&mut condition_task).unwrap();
-				let new_condition_status = condition_task.on_update();
 
-				if new_condition_status != condition_status {
+				if condition_task.on_update() != condition_status {
+					let composite_index = conditional_reevaluate.composite_index;
+					for j in (0..self.active_stack.len()).rev(){
+						if self.active_stack[j].len() > 0{
+							let task_index = self.active_stack[j].peak();
+							let mut task_index = task_index as i32;
+							if !self.is_parent_task(composite_index, task_index){
+								continue;
+							}
 
+							let stack_count = self.active_stack.len();
+							while task_index != -1 && task_index != composite_index && self.active_stack.len() == stack_count {
+								let status = TaskStatus::Failure;
+								self.pop_task(task_index, j, status, false);
+								task_index = self.parent_index[task_index as usize];
+							}
+						}
+					}
 				}
 			}
 		}
