@@ -7,10 +7,10 @@ use super::runtime::TaskProxy;
 use super::consts::AbortType;
 
 pub struct JsonParser{
-    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IAction>>,
-    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IConditional>>,
-    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IComposite>>,
-    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IDecorator>>,
+    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IAction>>,
+    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IConditional>>,
+    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IComposite>>,
+    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IDecorator>>,
 }
 
 impl JsonParser{
@@ -23,24 +23,24 @@ impl JsonParser{
         }
     }
 
-    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IAction>){
+    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IAction>){
         self.action_fn.insert(name.to_string(), action_generate_fn);
     }
 
-    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IConditional>){
+    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IConditional>){
         self.conditional_fn.insert(name.to_string(), conditional_generate_fn);
     }
 
-    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IComposite>){
+    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IComposite>){
         self.composite_fn.insert(name.to_string(), composite_generate_fn);
     }
 
-    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IDecorator>){
+    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Box<dyn IDecorator>){
         self.decorator_fn.insert(name.to_string(), decorator_generate_fn);
     }
 
 
-    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
+    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
         if self.action_fn.contains_key(corresponding_type){
             return Ok(RealTaskType::Action(self.action_fn.get(corresponding_type).unwrap()(variables, id_2_task)));
         }
@@ -57,7 +57,7 @@ impl JsonParser{
         Err(format!("generate_real_task not implemented for corresponding_type: {}", corresponding_type).into())
     }
 
-    fn generate_task_proxy(&self, task_json:&serde_json::Value, unit:&Weak<Box<dyn IUnit>>, id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
+    fn generate_task_proxy(&self, task_json:&serde_json::Value, unit:&Weak<Box<dyn IUnit>>, id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
         let corresponding_type = task_json["Type"].as_str().unwrap();
 
         let mut variables:HashMap<String, serde_json::Value> = HashMap::new();
@@ -72,7 +72,7 @@ impl JsonParser{
             }
         }
 
-        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, id_2_task)?;
+        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, id_2_task.clone())?;
 
         let name = match task_json["Name"].as_str(){
             Some(name) => name,
@@ -101,10 +101,17 @@ impl JsonParser{
             }
         }
 
-        Ok(Rc::new(Box::new(task_proxy)))
+        if task_proxy.id() == 0{
+            return Err("ID is 0".into());
+        }
+
+        let task_proxy:Rc<Box<dyn ITaskProxy>> = Rc::new(Box::new(task_proxy));
+        let mut id_2_task = id_2_task.upgrade().unwrap();
+        Rc::get_mut(&mut id_2_task).unwrap().insert(task_proxy.id(), Rc::downgrade(&task_proxy));
+        Ok(task_proxy)
     }
 
-    fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<Box<dyn IUnit>>, id_2_task:Weak<Box<HashMap<u32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
+    fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<Box<dyn IUnit>>, id_2_task:Weak<Box<HashMap<i32, Weak<Box<dyn ITaskProxy>>>>>) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>{
         let real_task = self.generate_task_proxy(task_json, unit, id_2_task)?;
 
 
