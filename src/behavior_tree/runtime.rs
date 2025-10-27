@@ -679,6 +679,15 @@ impl BehaviorTree{
 	}
 
 	fn initialize(&mut self)->Result<(), Box<dyn std::error::Error>>{
+		if !self.initialize_for_base_flag{
+			self.initialize_for_base()?;
+			self.initialize_for_base_flag = true;
+		}
+
+		self.stack_id = 1;
+		self.active_stack.clear();
+		self.conditional_reevaluate.clear();
+		self.conditional_reevaluate_map.clear();
 		Ok(())
 	}
 }
