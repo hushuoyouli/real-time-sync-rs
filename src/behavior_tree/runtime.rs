@@ -449,8 +449,8 @@ impl ITaskProxy for TaskProxy {
 	fn on_cancel_conditional_abort(&mut self, index:u32){
 		let mut behavior_tree = self.owner.as_ref().unwrap().upgrade().unwrap();
 		let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
-		let behavior_tree = behavior_tree.as_ref();
-		
+		let behavior_tree: &dyn IBehaviorTree = behavior_tree.as_ref();
+
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_cancel_conditional_abort(index,self, behavior_tree),
