@@ -1,14 +1,6 @@
 use std::{collections::HashMap, rc::{Rc,Weak}};
 use super::consts::{TaskStatus, AbortType};
-
-
-pub trait IUnit {
-	fn id(&self) -> u64;
-}
-
-pub trait IClock{
-	fn timestamp_in_mill(&self)->u64;
-}
+use super::interface::{IUnit, IClock};
 
 pub struct TaskRuntimeData{
 
@@ -123,7 +115,7 @@ pub trait IConditional{
 
 #[allow(unused_variables)]
 pub trait  IParentTask {
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_start(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}   
     fn on_end(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
     fn on_complete(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree){}
@@ -189,7 +181,7 @@ pub struct TaskProxy{
 	real_task:RealTaskType,
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 	parent:Option<Weak<Box<TaskProxy>>>,
-	owner:Option<Weak<Box<BehaviorTree>>>,
+	owner:Option<Weak<Box<dyn IBehaviorTree>>>,
 }
 
 #[allow(unused_variables)]
@@ -210,11 +202,11 @@ impl TaskProxy {
 		}
 	}
 
-	pub fn set_owner(&mut self, owner:Option<Weak<Box<BehaviorTree>>>){
+	pub fn set_owner(&mut self, owner:Option<Weak<Box<dyn IBehaviorTree>>>){
 		self.owner = owner;
 	}
 
-	pub fn owner(&self)->Option<Weak<Box<BehaviorTree>>>{
+	pub fn owner(&self)->Option<Weak<Box<dyn IBehaviorTree>>>{
 		self.owner.clone()
 	}
 
@@ -583,6 +575,8 @@ impl TaskAddData{
 
 pub trait IParser{
 	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<Box<TaskProxy>>, Box<dyn std::error::Error>>;
+	fn behavior_tree(&self) -> Option<Weak<Box<dyn IBehaviorTree>>>;
+	fn set_behavior_tree(&mut self, behavior_tree:Option<Weak<Box<dyn IBehaviorTree>>>);
 }
 
 struct EntryRoot{
@@ -598,7 +592,7 @@ impl  EntryRoot {
 }
 
 impl IParentTask for EntryRoot {
-	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&BehaviorTree) {
+	fn on_awake(&mut self, task_proxy:&TaskProxy, behavior_tree:&dyn IBehaviorTree) {
 		self.execution_status = TaskStatus::Inactive;
 	}	
 
@@ -661,16 +655,16 @@ pub struct BehaviorTree{
 	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
 	initialize_for_base_flag:bool,
     
-	self_weak_ref:Option<Weak<Box<Self>>>,
+	//self_weak_ref:Option<Weak<Box<Self>>>,
 	parser:Rc<Box<dyn IParser>>,
 }
 
 #[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
-		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<Box<Self>>{
-			let mut  behavior_tree = 
-		Rc::new(Box::new(Self{
+		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<Box<dyn IBehaviorTree>>{
+		let mut parser_bak = parser.clone();
+		let behavior_tree = Self{
 			id,
 			task_list: Vec::new(),
 			parent_index: Vec::new(),
@@ -696,13 +690,11 @@ impl BehaviorTree{
 			parallel_task_id_to_stack_ids: HashMap::new(),
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
-			self_weak_ref: None,
 			parser:parser,
-		}));
+		};
 
-		let self_weak_ref = Rc::downgrade(&behavior_tree);
-		//behavior_tree.self_weak_ref = Some(self_weak_ref);
-		Rc::get_mut(&mut behavior_tree).unwrap().self_weak_ref = Some(self_weak_ref);
+		let behavior_tree:Rc<Box<dyn IBehaviorTree>> = Rc::new(Box::new(behavior_tree));
+		Rc::get_mut(&mut parser_bak).unwrap().set_behavior_tree(Some(Rc::downgrade(&behavior_tree)));
 		behavior_tree
 	}
 
@@ -719,7 +711,7 @@ impl BehaviorTree{
 		let root_task = self.parser.deserialize(&self.config, &taskAddData)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
-		root_proxy.set_owner(self.self_weak_ref.clone());
+		root_proxy.set_owner(self.parser.behavior_tree().clone());
 		root_proxy.add_child(&root_task);
 		
 		self.root_task = Some(Rc::new(Box::new(root_proxy)));
@@ -763,7 +755,7 @@ impl BehaviorTree{
 
 		Rc::get_mut(child_task).unwrap().set_id(index);
 		Rc::get_mut(child_task).unwrap().set_parent(Some(Rc::downgrade(parent_task)));
-		Rc::get_mut(child_task).unwrap().set_owner(self.self_weak_ref.clone());
+		Rc::get_mut(child_task).unwrap().set_owner(self.parser.behavior_tree().clone());
 
 		if child_task.is_implements_iparenttask(){
 			if child_task.is_implements_icomposite(){
