@@ -65,6 +65,10 @@ impl  RunningStack {
 	pub fn push(&mut self, task_index:u32){
 		self.stack.push(task_index);
 	}
+
+	pub fn pop(&mut self){
+		self.stack.pop();
+	}
 }
 
 pub struct TaskAddData{

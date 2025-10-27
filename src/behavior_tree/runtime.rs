@@ -987,6 +987,12 @@ impl BehaviorTree{
 			}
 		}
 	}
+
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus) -> TaskStatus{
+		todo!("run_task");		
+	}
+
+	/* func (p *BehaviorTree) RunTask(taskIndex, stackIndex int, previousStatus iface.TaskStatus) iface.TaskStatus { */
 }
 
 impl IBehaviorTree for BehaviorTree{
@@ -1046,6 +1052,27 @@ impl IBehaviorTree for BehaviorTree{
 
 
 			self.reevaluate_conditional_tasks();
+
+			for j in (0..self.active_stack.len()).rev(){
+				let mut status = TaskStatus::Inactive;
+				let mut start_index = -1;
+				let mut task_index = 0;
+
+				let current_stack = self.active_stack[j].clone();
+				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
+					task_index = self.active_stack[j].peak();
+					if !self.is_running{
+						break;
+					}
+
+					if self.active_stack[j].len() > 0 && start_index == (self.active_stack[j].peak() as i32){
+						break;
+					}
+
+					start_index = task_index as i32;
+					status = self.run_task(task_index, j, status);
+				}
+			}
 		}
 	}
 
