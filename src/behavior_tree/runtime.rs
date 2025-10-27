@@ -649,12 +649,16 @@ pub struct BehaviorTree{
 	parallel_task_id_to_stack_ids:HashMap<u32, Vec<u32>>,
 
 	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
-	initialize_for_base_flag:bool
+	initialize_for_base_flag:bool,
+    
+	self_weak_ref:Option<Weak<Box<Self>>>,
 }
+
 #[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
 		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>) -> Rc<Box<Self>>{
+			let mut  behavior_tree = 
 		Rc::new(Box::new(Self{
 			id,
 			task_list: Vec::new(),
@@ -681,7 +685,13 @@ impl BehaviorTree{
 			parallel_task_id_to_stack_ids: HashMap::new(),
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
-		}))
+			self_weak_ref: None,
+		}));
+
+		let self_weak_ref = Rc::downgrade(&behavior_tree);
+		//behavior_tree.self_weak_ref = Some(self_weak_ref);
+		Rc::get_mut(&mut behavior_tree).unwrap().self_weak_ref = Some(self_weak_ref);
+		behavior_tree
 	}
 
 	fn initialize_for_base(&mut self, parser:&dyn IParser) ->Result<(), Box<dyn std::error::Error>>{
