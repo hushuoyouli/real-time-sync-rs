@@ -19,7 +19,7 @@ pub struct TaskProxy{
 	id:i32,
 	name:String,
 	disabled:bool,
-	unit:Rc<Box<dyn IUnit>>,
+	unit:Weak<Box<dyn IUnit>>,
 
 	//	IComposite专用
 	abort_type:AbortType,
@@ -28,10 +28,11 @@ pub struct TaskProxy{
 	sync_data_collector:Option<Rc<Box<SyncDataCollector>>>,
 	parent:Option<Weak<Box<dyn ITaskProxy>>>,
 	owner:Option<Weak<Box<dyn IBehaviorTree>>>,
+	instant:bool,
 }
 
 impl TaskProxy{
-	pub fn new(corresponding_type:&str, name:&str,unit:&Rc<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
+	pub fn new(corresponding_type:&str, name:&str,unit:&Weak<Box<dyn IUnit>>,real_task:RealTaskType) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
@@ -44,12 +45,21 @@ impl TaskProxy{
 			sync_data_collector: None,
 			parent: None,
 			owner:None,
+			instant:true,
 		}
 	}
 }
 
 #[allow(unused_variables)]
 impl ITaskProxy for TaskProxy {
+	fn set_instant(&mut self, instant:bool){
+		self.instant = instant;
+	}
+
+	fn instant(&self)->bool{
+		self.instant
+	}
+
 	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>{
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result =
@@ -104,7 +114,7 @@ impl ITaskProxy for TaskProxy {
 		self.disabled = disabled;
 	}
 
-	fn unit(&self)->Rc<Box<dyn IUnit>>{
+	fn unit(&self)->Weak<Box<dyn IUnit>>{
 		self.unit.clone()
 	}
 
@@ -528,7 +538,7 @@ pub struct BehaviorTree{
 	initialize_first_stack_and_first_task:bool, //	是否需要初始化第一个执行栈和第一个任务
 	execution_status:TaskStatus,
 	config:Vec<u8>,
-	unit:Rc<Box<dyn IUnit>>,
+	unit:Weak<Box<dyn IUnit>>,
 	root_task:Option<Rc<Box<dyn ITaskProxy>>>,
 	clock:Rc<Box<dyn IClock>>,                            
 	stack_id:u32,
@@ -550,7 +560,7 @@ pub struct BehaviorTree{
 
 #[allow(unused_variables)]
 impl BehaviorTree{
-	pub fn new(id: u64, config:&Vec<u8>,	unit:Rc<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
+	pub fn new(id: u64, config:&Vec<u8>,	unit:Weak<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
 		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<Box<dyn IBehaviorTree>>{
 		let behavior_tree = Self{
 			id,
@@ -600,7 +610,7 @@ impl BehaviorTree{
 		self.root_task = None;
 		let taskAddData: TaskAddData = TaskAddData::new(&self.unit);
 
-		let root_task = self.parser.deserialize(&self.config, &taskAddData)?;
+		let root_task = self.parser.deserialize(&self.config, &self.unit.clone(), &taskAddData)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
 		root_proxy.set_owner(self.self_weak_ref.clone());
@@ -728,7 +738,7 @@ impl IBehaviorTree for BehaviorTree{
 		self.is_running
 	}
 
-	fn unit(&self)->Rc<Box<dyn IUnit>>{
+	fn unit(&self)->Weak<Box<dyn IUnit>>{
 		self.unit.clone()
 	}
 

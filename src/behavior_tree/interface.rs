@@ -29,13 +29,13 @@ pub struct TaskAddData{
 	pub parent_index:i32,
 	pub depth:u32,
 	pub composite_parent_index:u32,
-	pub unit:Rc<Box<dyn IUnit>>,
+	pub unit:Weak<Box<dyn IUnit>>,
 	pub error_task:i32,
 	pub error_task_name:String,
 }
 
 impl TaskAddData{
-	pub fn new(unit:&Rc<Box<dyn IUnit>>) -> Self{
+	pub fn new(unit:&Weak<Box<dyn IUnit>>) -> Self{
 		Self{
 			parent:None,
 			parent_index:-1,
@@ -49,7 +49,7 @@ impl TaskAddData{
 }
 
 pub trait IParser{
-	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>;
+	fn deserialize(&self, config:&Vec<u8>, unit:&Weak<Box<dyn IUnit>>, task_add_data:&TaskAddData) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>;
 }
 
 
@@ -63,7 +63,7 @@ pub trait IBehaviorTree{
 	fn update(&mut self);
 	fn is_runnning(&self)->bool;
 
-	fn unit(&self)->Rc<Box<dyn IUnit>>;
+	fn unit(&self)->Weak<Box<dyn IUnit>>;
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector);
 	fn clock(&self)->Rc<Box<dyn IClock>>;
 }
@@ -103,6 +103,9 @@ impl SyncDataCollector{
 
 
 pub trait ITaskProxy{
+	fn set_instant(&mut self, instant:bool);
+	fn instant(&self)->bool;
+	
 	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>;
 	fn set_owner(&mut self, owner:Option<Weak<Box<dyn IBehaviorTree>>>);
 	fn owner(&self)->Option<Weak<Box<dyn IBehaviorTree>>>;
@@ -119,7 +122,7 @@ pub trait ITaskProxy{
 	fn disabled(&self)->bool;
 	fn set_disabled(&mut self, disabled:bool);
 
-	fn unit(&self)->Rc<Box<dyn IUnit>>;
+	fn unit(&self)->Weak<Box<dyn IUnit>>;
 	fn on_awake(&mut self);
     fn on_start(&mut self);
     fn on_end(&mut self);
