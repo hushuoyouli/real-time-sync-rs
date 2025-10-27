@@ -50,6 +50,19 @@ impl TaskProxy{
 
 #[allow(unused_variables)]
 impl ITaskProxy for TaskProxy {
+	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>{
+		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
+		let result =
+		match &mut real_task {
+			RealTaskType::Action(action) => action.initialize_variables(),
+			RealTaskType::Composite(composite) => composite.initialize_variables(),
+			RealTaskType::Decorator(decorator) => decorator.initialize_variables(),
+			RealTaskType::Conditional(conditional) => conditional.initialize_variables(),
+		};
+		self.real_task = real_task;
+		result
+	}
+	
 	fn set_owner(&mut self, owner:Option<Weak<Box<dyn IBehaviorTree>>>){
 		self.owner = owner;
 	}
