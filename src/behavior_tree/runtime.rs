@@ -540,7 +540,7 @@ pub struct BehaviorTree{
 	config:Vec<u8>,
 	unit:Weak<Box<dyn IUnit>>,
 	root_task:Option<Rc<Box<dyn ITaskProxy>>>,
-	clock:Rc<Box<dyn IClock>>,                            
+	clock:Weak<Box<dyn IClock>>,                            
 	stack_id:u32,
     stack_id_to_stack_data:HashMap<u32, Rc<Box<RunningStack>>>,
 
@@ -560,7 +560,7 @@ pub struct BehaviorTree{
 
 #[allow(unused_variables)]
 impl BehaviorTree{
-	pub fn new(id: u64, config:&Vec<u8>,	unit:Weak<Box<dyn IUnit>>,  clock:Rc<Box<dyn IClock>>, 
+	pub fn new(id: u64, config:&Vec<u8>,	unit:&Weak<Box<dyn IUnit>>,  clock:&Weak<Box<dyn IClock>>, 
 		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<Box<dyn IBehaviorTree>>{
 		let behavior_tree = Self{
 			id,
@@ -578,9 +578,9 @@ impl BehaviorTree{
 			initialize_first_stack_and_first_task: false,
 			execution_status: TaskStatus::Inactive,
 			config: config.clone(),
-			unit:unit,
+			unit:unit.clone(),
 			root_task:None,
-			clock:clock,
+			clock:clock.clone(),
 			stack_id: 0,
 			stack_id_to_stack_data: HashMap::new(),
 			task_datas: HashMap::new(),
@@ -728,7 +728,7 @@ impl IBehaviorTree for BehaviorTree{
 		self.execution_status = TaskStatus::Inactive;
 		self.is_running = true;
 		
-		let now_timestamp_in_milli = self.clock.timestamp_in_mill();
+		let now_timestamp_in_milli = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
 		self.runtime_event_handle.post_initialize(self, now_timestamp_in_milli);
 		self.initialize_first_stack_and_first_task = true;
 
@@ -755,7 +755,7 @@ impl IBehaviorTree for BehaviorTree{
 
 	}
 
-	fn clock(&self)->Rc<Box<dyn IClock>>{
+	fn clock(&self)->Weak<Box<dyn IClock>>{
 		self.clock.clone()
 	}
 }

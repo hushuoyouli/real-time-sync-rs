@@ -67,7 +67,7 @@ pub trait IBehaviorTree{
 
 	fn unit(&self)->Weak<Box<dyn IUnit>>;
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector);
-	fn clock(&self)->Rc<Box<dyn IClock>>;
+	fn clock(&self)->Weak<Box<dyn IClock>>;
 }
 
 
