@@ -469,12 +469,20 @@ impl ITaskProxy for TaskProxy {
 }
 
 pub struct ConditionalReevaluate{
-
+	pub index:i32,
+	pub task_status:TaskStatus,
+	pub composite_index:i32,
 }
 
-
-
-
+impl ConditionalReevaluate{
+	pub fn new(index:i32, task_status:TaskStatus, composite_index:i32) -> Self{
+		Self{
+			index,
+			task_status,
+			composite_index,
+		}
+	}
+}
 
 struct EntryRoot{
 	execution_status:TaskStatus,
@@ -820,32 +828,31 @@ impl BehaviorTree{
 					match task.abort_type() {
 						AbortType::None => (),
 						_ => {
-						    for conditional_reevaluate in self.conditional_reevaluate.iter_mut(){
-
+							let mut conditional_reevaluates = self.conditional_reevaluate.clone();
+						    for mut conditional_reevaluate in  conditional_reevaluates.iter_mut(){
+								if self.is_parent_task(task.id(), conditional_reevaluate.index) {
+									let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
+									conditional_reevaluate.composite_index = task.id();
+								}
 							}
+							match task.abort_type() {
+								AbortType::LowerPriority => {
+									let mut child_conditional_indexes = self.child_conditional_index[task.id() as usize].clone();
+									for child_conditional_index in child_conditional_indexes.into_iter(){
+										let child_conditional_indexes = child_conditional_index as u32;
+										if let Some(mut conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
+											let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
+											conditional_reevaluate.composite_index = -1;
+										}
+									}
+									()
+								},
+								_ => (),
+							};
 
 							()
 						},
 					}
-					/*
-					if task.abort_type() != iface.None {
-						for _, conditionalReevaluate := range p.conditionalReevaluate {
-							if p.IsParentTask(taskIndex, conditionalReevaluate.index) {
-								conditionalReevaluate.compositeIndex = taskIndex
-							}
-						}
-	
-						if compositeTask.AbortType() == iface.LowerPriority {
-							childConditionalIndexes := p.childConditionalIndex[compositeTask.ID()]
-							for _, childConditionalIndex := range childConditionalIndexes {
-								var conditionalReevaluate *ConditionalReevaluate
-								if p.conditionalReevaluateMap.TryGetValue(childConditionalIndex, &conditionalReevaluate) {
-									conditionalReevaluate.compositeIndex = -1
-								}
-							}
-						}
-					}
-					 */
 				}
 				
 			}
