@@ -8,10 +8,10 @@ use super::runtime::TaskProxy;
 use super::consts::AbortType;
 
 pub struct JsonParser{
-    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IAction>>,
-    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IConditional>>,
-    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IComposite>>,
-    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IDecorator>>,
+    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
+    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>>,
+    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>>,
+    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>>,
 }
 
 impl JsonParser{
@@ -24,24 +24,24 @@ impl JsonParser{
         }
     }
 
-    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IAction>){
+    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>){
         self.action_fn.insert(name.to_string(), action_generate_fn);
     }
 
-    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IConditional>){
+    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>){
         self.conditional_fn.insert(name.to_string(), conditional_generate_fn);
     }
 
-    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IComposite>){
+    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>){
         self.composite_fn.insert(name.to_string(), composite_generate_fn);
     }
 
-    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Box<dyn IDecorator>){
+    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>){
         self.decorator_fn.insert(name.to_string(), decorator_generate_fn);
     }
 
 
-    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
+    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
         if self.action_fn.contains_key(corresponding_type){
             return Ok(RealTaskType::Action(self.action_fn.get(corresponding_type).unwrap()(variables, id_2_task)));
         }
@@ -58,7 +58,7 @@ impl JsonParser{
         Err(format!("generate_real_task not implemented for corresponding_type: {}", corresponding_type).into())
     }
 
-    fn generate_task_proxy(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+    fn generate_task_proxy(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
         let corresponding_type = task_json["Type"].as_str().unwrap();
 
         let mut variables:HashMap<String, serde_json::Value> = HashMap::new();
@@ -73,7 +73,7 @@ impl JsonParser{
             }
         }
 
-        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, id_2_task.clone())?;
+        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, Rc::downgrade(id_2_task))?;
 
         let name = match task_json["Name"].as_str(){
             Some(name) => name,
@@ -109,20 +109,18 @@ impl JsonParser{
         }
 
         let task_proxy:Rc<RefCell<Box<dyn ITaskProxy>>> = Rc::new(RefCell::new(Box::new(task_proxy)));
-        let id_2_task_bak= id_2_task.clone();
 
-        let mut id_2_task = id_2_task.upgrade().unwrap();
-        let id_2_task  = Rc::get_mut(&mut id_2_task).unwrap();
-        if id_2_task.contains_key(&task_proxy.borrow().id()){
+        if id_2_task.borrow().contains_key(&task_proxy.borrow().id()){
             return Err("ID already exists".into());
         }
 
-        id_2_task.insert(task_proxy.borrow().id(), Rc::downgrade(&task_proxy));
+        id_2_task.borrow_mut().insert(task_proxy.borrow().id(), Rc::downgrade(&task_proxy));
+        all_tasks.push(Rc::downgrade(&task_proxy));
 
         match task_json["Children"].as_array(){
             Some(children) => 
             for child in children.iter(){
-                let child = self.generate_task_proxy(child, unit, id_2_task_bak.clone())?;
+                let child = self.generate_task_proxy(child, unit, id_2_task, all_tasks)?;
                 task_proxy.borrow_mut().add_child(&child);
                 //Rc::get_mut(&mut task_proxy).unwrap().add_child(&child);
             },
@@ -132,8 +130,8 @@ impl JsonParser{
         Ok(task_proxy)
     }
 
-    fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:Weak<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
-        self.generate_task_proxy(task_json, unit, id_2_task)
+    fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+        self.generate_task_proxy(task_json, unit, id_2_task, all_tasks)
     }
 
     fn initialize_parent_task(&self, task_proxy:&mut Rc<RefCell<Box<dyn ITaskProxy>>>, task_add_data:&mut TaskAddData){
@@ -157,24 +155,24 @@ impl IParser for JsonParser{
     fn deserialize(&self, config:&Vec<u8>, unit:&Weak<RefCell<Box<dyn IUnit>>>,task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
         let json: serde_json::Value = from_str(std::str::from_utf8(config)?).unwrap();
         let root_task_json: &serde_json::Value = json.get("RootTask").ok_or("json文件缺少RootTask的配置")?;
-        let mut id_2_task = Rc::new(Box::new(HashMap::new()));
-        let root_task = self.initialize_task(root_task_json, unit, Rc::downgrade(&id_2_task))?;
+        let mut all_tasks:Vec<Weak<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
+        let id_2_task = Rc::new(RefCell::new(Box::new(HashMap::new())));
+        let root_task = self.initialize_task(root_task_json, unit, &id_2_task,&mut all_tasks)?;
 
         let mut detached_tasks:Vec<Rc<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
         if let Some(_) = json.get("DetachedTasksConfigs"){
             let detached_tasks_configs = json.get("DetachedTasksConfigs").unwrap().as_array().unwrap();
             for detached_task_config in detached_tasks_configs.iter(){
-                let detached_task = self.initialize_task(detached_task_config, unit, Rc::downgrade(&id_2_task))?;
+                let detached_task = self.initialize_task(detached_task_config, unit, &id_2_task,&mut all_tasks)?;
                 detached_tasks.push(detached_task);
             }
         }
-        
-        //  初始化任务
-        for (_id, task_proxy) in Rc::get_mut(&mut id_2_task).unwrap().iter(){
-            let task_proxy = task_proxy.upgrade().unwrap();
-            task_proxy.borrow_mut().initialize_variables()?;
-        }
 
+        //  初始化任务变量
+        for task in all_tasks.iter(){
+            let task = task.upgrade().unwrap();
+            task.borrow_mut().initialize_variables()?;
+        }
 
         Ok(root_task)
     }
