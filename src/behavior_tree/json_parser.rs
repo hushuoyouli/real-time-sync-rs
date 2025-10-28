@@ -21,6 +21,8 @@ use super::decorator::until_failure::UntilFailure;
 use super::decorator::until_success::UntilSuccess;
 use super::decorator::until_forever::UntilForever;
 
+use super::conditional::need_follow_joystick::NeedFollowJoystick;
+
 pub struct JsonParser{
     action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
     conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>>,
@@ -54,6 +56,7 @@ impl JsonParser{
         parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.UntilSuccess", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(UntilSuccess::new())});
         parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.UntilForever", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(UntilForever::new())});
 
+        parser.register_conditional_fn("BehaviorDesigner.Runtime.Tasks.Role.MainRole.NeedFollowJoystick", |variables, id_2_task| -> Box<dyn IConditional> {Box::new(NeedFollowJoystick::new())});
         Rc::new(RefCell::new(Box::new(parser)))
     }
 
