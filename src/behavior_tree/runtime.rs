@@ -666,82 +666,70 @@ impl BehaviorTree{
 			self.non_instant_task_status[stack_index] = TaskStatus::Running;
 			
 			let task = &mut self.task_list.get(task_index as usize).unwrap();
-	        let mut task = task.clone().upgrade().unwrap();
+	        let task = task.clone().upgrade().unwrap();
+			let mut task = task.borrow_mut();
+			let task = task.as_mut();
+
 			let stack = &mut self.active_stack[stack_index];
 			let stack_data = self.stack_id_to_stack_data[&stack.stack_id].clone();
 			let stack_data = stack_data.borrow();
 			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			let task_execute_id= self.next_task_execute_id();
 	
-			let task_runtime_data= TaskRuntimeData::new(task.borrow().id(), now_timestamp, task_execute_id, stack_data.stack_id);
-			self.task_datas.insert(task.borrow().id(), task_runtime_data);
+			let task_runtime_data= TaskRuntimeData::new(task.id(), now_timestamp, task_execute_id, stack_data.stack_id);
+			self.task_datas.insert(task.id(), task_runtime_data);
 	
 			//	TODO:这里需要截获初始化的数据？
-			{
-				let task = task.borrow();
-				let task = task.as_ref();
-				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
-			}
+			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
+
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
-			if task.borrow().is_implements_iparenttask() {
-				if task.borrow().can_run_parallel_children() {
-					let task = task.borrow();
-					let task = task.as_ref();
+			if task.is_implements_iparenttask() {
+				if task.can_run_parallel_children() {
 					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
 				}
 			}
 	
 			//	先清理数据
-			if task.borrow().is_implements_iaction() {
-				if task.borrow().is_sync_to_client() {
-					let task = task.borrow();
-					let task = task.as_ref();
+			if task.is_implements_iaction() {
+				if task.is_sync_to_client() {
 					let sync_data_collector = task.sync_data_collector().unwrap();
 					sync_data_collector.borrow_mut().get_and_clear();
 				}
 			}
 
-			{
-				let task = task.borrow_mut().on_start(self);
-				//task.on_start();
-			}
-
-			if task.borrow().is_implements_iaction() {
+			task.on_start(self);
+			
+			if task.is_implements_iaction() {
 				//action := task.(iface.IAction)
-				if task.borrow().is_sync_to_client() {
-					let mut sync_data_collector = task.borrow().sync_data_collector().unwrap();
+				if task.is_sync_to_client() {
+					let mut sync_data_collector = task.sync_data_collector().unwrap();
 					let datas = sync_data_collector.borrow_mut().get_and_clear();
-
-					let task = task.borrow();
-					let task = task.as_ref();
-
 					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task, datas);
 				}
 			}
 	
-			if task.borrow().is_implements_iparenttask() {
+			if task.is_implements_iparenttask() {
 				//	可以并发的父节点有特殊处理
 				
-				if task.borrow().can_run_parallel_children() {
-					self.parallel_task_id_to_stack_ids.insert(task.borrow().id(), Vec::new());
-					//p.parallelTaskID2StackIDs[task.ID()] = make([]int, 0)
+				if task.can_run_parallel_children() {
+					self.parallel_task_id_to_stack_ids.insert(task.id(), Vec::new());
 				}
 
 				 
-				if task.borrow().is_implements_icomposite() {
-					match task.borrow().abort_type() {
+				if task.is_implements_icomposite() {
+					match task.abort_type() {
 						AbortType::None => (),
 						_ => {
 							let mut conditional_reevaluates = self.conditional_reevaluate.clone();
 						    for mut conditional_reevaluate in  conditional_reevaluates.iter_mut(){
-								if self.is_parent_task(task.borrow().id(), conditional_reevaluate.index) {
+								if self.is_parent_task(task.id(), conditional_reevaluate.index) {
 									let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
-									conditional_reevaluate.composite_index = task.borrow().id();
+									conditional_reevaluate.composite_index = task.id();
 								}
 							}
-							match task.borrow().abort_type() {
+							match task.abort_type() {
 								AbortType::LowerPriority => {
-									let mut child_conditional_indexes = self.child_conditional_index[task.borrow().id() as usize].clone();
+									let child_conditional_indexes = self.child_conditional_index[task.id() as usize].clone();
 									for child_conditional_index in child_conditional_indexes.into_iter(){
 										let child_conditional_indexes = child_conditional_index;
 										if let Some(mut conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
