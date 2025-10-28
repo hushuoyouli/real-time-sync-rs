@@ -908,11 +908,12 @@ impl IBehaviorTree for BehaviorTree{
 
 		for task in self.task_list.iter_mut(){
 			let action = task.upgrade().unwrap();
+			let mut action =action .borrow_mut();
 
 			//let action = Rc::get_mut(task).unwrap();
-			if action.borrow().is_implements_iaction(){
-				if action.borrow().is_sync_to_client(){
-					action.borrow_mut().set_sync_data_collector(Some(SyncDataCollector::new()));
+			if action.is_implements_iaction(){
+				if action.is_sync_to_client(){
+					action.set_sync_data_collector(Some(SyncDataCollector::new()));
 				};
 			}
 		}
@@ -920,8 +921,9 @@ impl IBehaviorTree for BehaviorTree{
 		let mut task_list = self.task_list.clone();
 		for task in task_list.iter_mut(){
 			let task = task.upgrade().unwrap();
-			if !task.borrow().disabled(){
-				task.borrow_mut().on_awake(self);
+			let mut task = task.borrow_mut();
+			if !task.disabled(){
+				task.on_awake(self);
 			}
 		}
 
