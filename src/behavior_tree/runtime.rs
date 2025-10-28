@@ -474,7 +474,7 @@ pub struct BehaviorTree{
 	runtime_event_handle:Box<dyn IRuntimeEventHandle>,
 	initialize_for_base_flag:bool,
     
-	parser:Rc<Box<dyn IParser>>,
+	parser:Weak<RefCell<Box<dyn IParser>>>,
 	task_execute_id:u32,
 	unit_id:u64,
 }
@@ -483,7 +483,7 @@ pub struct BehaviorTree{
 #[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit_id:u64,  clock:&Weak<RefCell<Box<dyn IClock>>>, 
-		runtime_event_handle:Box<dyn IRuntimeEventHandle>,parser:Rc<Box<dyn IParser>>) -> Rc<RefCell<Box<dyn IBehaviorTree>>>{
+		runtime_event_handle:Box<dyn IRuntimeEventHandle>,parser:Weak<RefCell<Box<dyn IParser>>>) -> Rc<RefCell<Box<dyn IBehaviorTree>>>{
 		let behavior_tree = Self{
 			id,
 			task_list: Vec::new(),
@@ -530,7 +530,11 @@ impl BehaviorTree{
 		self.root_task = None;
 		let mut task_add_data: TaskAddData = TaskAddData::new();
 
-		let root_task = self.parser.deserialize(&self.config, &mut task_add_data)?;
+		let parser =self.parser.upgrade().unwrap();
+		let parser = parser.borrow();
+
+
+		let root_task = parser.deserialize(&self.config, &mut task_add_data)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", RealTaskType::Decorator(entry_root));
 		root_proxy.add_child(&root_task);
