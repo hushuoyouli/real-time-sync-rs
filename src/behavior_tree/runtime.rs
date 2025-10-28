@@ -451,8 +451,8 @@ pub struct BehaviorTree{
 
     active_stack :Vec<Rc<Box<RunningStack>>>,
 	non_instant_task_status:Vec<TaskStatus>,
-	conditional_reevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
-	conditional_reevaluate_map:HashMap<i32, Rc<Box<ConditionalReevaluate>>>,
+	conditional_reevaluate:Vec<Rc<RefCell<Box<ConditionalReevaluate>>>>,
+	conditional_reevaluate_map:HashMap<i32, Rc<RefCell<Box<ConditionalReevaluate>>>>,
 
 	parent_composite_index:Vec<i32>,
 	child_conditional_index:Vec<Vec<i32>>,
@@ -721,9 +721,9 @@ impl BehaviorTree{
 						AbortType::None => (),
 						_ => {
 							let mut conditional_reevaluates = self.conditional_reevaluate.clone();
-						    for mut conditional_reevaluate in  conditional_reevaluates.iter_mut(){
+						    for conditional_reevaluate in  conditional_reevaluates.iter_mut(){
+								let mut conditional_reevaluate = conditional_reevaluate.borrow_mut();
 								if self.is_parent_task(task.id(), conditional_reevaluate.index) {
-									let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
 									conditional_reevaluate.composite_index = task.id();
 								}
 							}
@@ -732,9 +732,9 @@ impl BehaviorTree{
 									let child_conditional_indexes = self.child_conditional_index[task.id() as usize].clone();
 									for child_conditional_index in child_conditional_indexes.into_iter(){
 										let child_conditional_indexes = child_conditional_index;
-										if let Some(mut conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
-											let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
-											conditional_reevaluate.composite_index = -1;
+										if let Some(conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
+											//let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
+											conditional_reevaluate.borrow_mut().composite_index = -1;
 										}
 									}
 									()
@@ -755,16 +755,16 @@ impl BehaviorTree{
 	}
 
 	fn reevaluate_conditional_tasks(&mut self){
-		let mut update_condition_indexes:Vec<Rc<Box<ConditionalReevaluate>>> = Vec::with_capacity(10);
+		let mut update_condition_indexes:Vec<Rc<RefCell<Box<ConditionalReevaluate>>>> = Vec::with_capacity(10);
 		//updateConditionIndexes := util.NewList[*ConditionalReevaluate](10)
 		let  mut conditional_reevaluatees = self.conditional_reevaluate.clone();
 		let len = conditional_reevaluatees.len();
 		for i in (0..len).rev(){
 			
 			let conditional_reevaluate = &mut conditional_reevaluatees[i];
-			if conditional_reevaluate.composite_index != -1{
-				let condition_index = conditional_reevaluate.index;
-				let condition_status = conditional_reevaluate.task_status.clone();
+			if conditional_reevaluate.borrow().composite_index != -1{
+				let condition_index = conditional_reevaluate.borrow().index;
+				let condition_status = conditional_reevaluate.borrow().task_status.clone();
 
 				let condition_task =&mut self.task_list[condition_index as usize];
 				let condition_task = condition_task.upgrade().unwrap();
@@ -772,7 +772,7 @@ impl BehaviorTree{
 				//let condition_task = condition_task.borrow().as_ref();
 
 				if condition_task.on_update(self) != condition_status {
-					let composite_index = conditional_reevaluate.composite_index;
+					let composite_index = conditional_reevaluate.borrow().composite_index;
 					for j in (0..self.active_stack.len()).rev(){
 						if self.active_stack[j].len() > 0{
 							let task_index = self.active_stack[j].peak();
@@ -790,8 +790,8 @@ impl BehaviorTree{
 
 							for j in (i..self.conditional_reevaluate.len()).rev(){
 								let j_conditional_reval = self.conditional_reevaluate[j].clone();
-								if self.is_parent_task(composite_index, j_conditional_reval.index) {
-									let j_index = j_conditional_reval.index;
+								if self.is_parent_task(composite_index, j_conditional_reval.borrow().index) {
+									let j_index = j_conditional_reval.borrow().index;
 									self.conditional_reevaluate_map.remove(&j_index);
 									self.conditional_reevaluate.remove(j);
 								}
@@ -800,9 +800,9 @@ impl BehaviorTree{
 							//	原先abort过的要设置为原位
 							for j in (0..update_condition_indexes.len()).rev(){
 								let conditional_reevaluate = &update_condition_indexes[j];
-								if self.is_parent_task(composite_index, conditional_reevaluate.index) {
-									let mut task_index = self.parent_index[conditional_reevaluate.index as usize];
-									while task_index != -1 && task_index != conditional_reevaluate.composite_index {
+								if self.is_parent_task(composite_index, conditional_reevaluate.borrow().index) {
+									let mut task_index = self.parent_index[conditional_reevaluate.borrow().index as usize];
+									while task_index != -1 && task_index != conditional_reevaluate.borrow().composite_index {
 										let task = &mut self.task_list[task_index as usize];
 										let task = task.upgrade().unwrap();
 										let mut task = task.borrow_mut();
@@ -880,8 +880,8 @@ impl BehaviorTree{
 	fn remove_child_conditional_reevaluate(&mut self, composite_index:i32){
 		for i in (0..self.conditional_reevaluate.len()).rev(){
 			let conditional_reevaluate = self.conditional_reevaluate[i].clone();
-			if self.is_parent_task(composite_index, conditional_reevaluate.composite_index){
-				let conditional_index = conditional_reevaluate.index;
+			if self.is_parent_task(composite_index, conditional_reevaluate.borrow().composite_index){
+				let conditional_index = conditional_reevaluate.borrow().index;
 				self.conditional_reevaluate_map.remove(&conditional_index);
 				self.conditional_reevaluate.remove(i);
 			}
