@@ -18,3 +18,5 @@ impl IParentTask for UntilForever{
         true
     }
 }
+
+impl IDecorator for UntilForever{}

@@ -15,6 +15,12 @@ use super::action::idle::Idle;
 use super::action::play_ani_for_sync::PlayAniForSync;
 use super::action::role_follow_joystick::RoleFollowJoystick;
 
+use super::decorator::return_failure::ReturnFailure;
+use super::decorator::return_success::ReturnSuccess;
+use super::decorator::until_failure::UntilFailure;
+use super::decorator::until_success::UntilSuccess;
+use super::decorator::until_forever::UntilForever;
+
 pub struct JsonParser{
     action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
     conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>>,
@@ -42,7 +48,11 @@ impl JsonParser{
         parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.PlayAniForSync", |variables, id_2_task| -> Box<dyn IAction> {Box::new(PlayAniForSync::new())});
         parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.RoleFollowJoystick", |variables, id_2_task| -> Box<dyn IAction> {Box::new(RoleFollowJoystick::new())});
 
-        
+        parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.ReturnFailure", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(ReturnFailure::new())});
+        parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.ReturnSuccess", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(ReturnSuccess::new())});
+        parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.UntilFailure", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(UntilFailure::new())});
+        parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.UntilSuccess", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(UntilSuccess::new())});
+        parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.UntilForever", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(UntilForever::new())});
 
         Rc::new(RefCell::new(Box::new(parser)))
     }
