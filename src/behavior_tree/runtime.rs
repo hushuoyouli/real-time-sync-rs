@@ -668,25 +668,26 @@ impl BehaviorTree{
 			let task = &mut self.task_list.get(task_index as usize).unwrap();
 	        let mut task = task.clone().upgrade().unwrap();
 			let stack = &mut self.active_stack[stack_index];
-			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+			let stack_data = self.stack_id_to_stack_data[&stack.stack_id].clone();
+			let stack_data = stack_data.borrow();
 			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			let task_execute_id= self.next_task_execute_id();
 	
-			let task_runtime_data= TaskRuntimeData::new(task.borrow().id(), now_timestamp, task_execute_id, stack_data.borrow().stack_id);
+			let task_runtime_data= TaskRuntimeData::new(task.borrow().id(), now_timestamp, task_execute_id, stack_data.stack_id);
 			self.task_datas.insert(task.borrow().id(), task_runtime_data);
 	
 			//	TODO:这里需要截获初始化的数据？
 			{
 				let task = task.borrow();
 				let task = task.as_ref();
-				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task);
+				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
 			}
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
 			if task.borrow().is_implements_iparenttask() {
 				if task.borrow().can_run_parallel_children() {
 					let task = task.borrow();
 					let task = task.as_ref();
-					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task);
+					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
 				}
 			}
 	
@@ -714,7 +715,7 @@ impl BehaviorTree{
 					let task = task.borrow();
 					let task = task.as_ref();
 
-					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task, datas);
+					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task, datas);
 				}
 			}
 	
@@ -860,8 +861,7 @@ impl BehaviorTree{
 			let stack = &self.active_stack[stack_index];
 			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
 			let stack_data = stack_data.borrow();
-			let stack_data=stack_data.as_ref();
-			//let stack_data = stack_data;
+			let stack_data= stack_data.as_ref();
 
 			let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
