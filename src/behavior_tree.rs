@@ -4,3 +4,4 @@ pub mod consts;
 pub mod json_parser;
 pub mod composite;
 pub mod action;
+pub mod decorator;
