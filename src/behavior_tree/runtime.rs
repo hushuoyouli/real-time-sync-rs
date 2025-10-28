@@ -475,9 +475,7 @@ pub struct BehaviorTree{
 	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
 	initialize_for_base_flag:bool,
     
-	
 	parser:Rc<Box<dyn IParser>>,
-	self_weak_ref:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>,
 	task_execute_id:u32,
 }
 
@@ -513,14 +511,10 @@ impl BehaviorTree{
 			runtime_event_handle: runtime_event_handle,
 			initialize_for_base_flag: false,
 			parser:parser,
-			self_weak_ref:None,
 			task_execute_id:1,
 		};
 
 		let behavior_tree:Rc<RefCell<Box<dyn IBehaviorTree>>> = Rc::new(RefCell::new(Box::new(behavior_tree)));
-		let self_weak_ref = Some(Rc::downgrade(&behavior_tree));
-		behavior_tree.borrow_mut().set_self_weak_ref(self_weak_ref);
-
 		behavior_tree
 	}
 
@@ -534,7 +528,7 @@ impl BehaviorTree{
 		self.parent_composite_index.clear();
 		self.child_conditional_index.clear();
 		self.root_task = None;
-		let task_add_data: TaskAddData = TaskAddData::new(&self.unit, &self.self_weak_ref.clone().unwrap());
+		let task_add_data: TaskAddData = TaskAddData::new(&self.unit);
 
 		let root_task = self.parser.deserialize(&self.config, &self.unit.clone(), &task_add_data)?;
 		let entry_root = EntryRoot::new();
@@ -720,10 +714,7 @@ impl BehaviorTree{
 					let task = task.borrow();
 					let task = task.as_ref();
 
-					let mut behavior_tree = self.self_weak_ref.as_ref().unwrap().upgrade();
-					let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-					let behavior_tree = behavior_tree.as_ref();
-					self.runtime_event_handle.action_post_on_start(behavior_tree, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task, datas);
+					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task, datas);
 				}
 			}
 	
@@ -916,10 +907,6 @@ impl BehaviorTree{
 }
 
 impl IBehaviorTree for BehaviorTree{
-	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>){
-		self.self_weak_ref = self_weak_ref;
-	}
-
 	fn id(&self)->u64{
 		self.id
 	}

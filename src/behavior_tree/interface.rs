@@ -79,11 +79,10 @@ pub struct TaskAddData{
 	pub unit:Weak<RefCell<Box<dyn IUnit>>>,
 	pub error_task:i32,
 	pub error_task_name:String,
-	pub owner:Weak<RefCell<Box<dyn IBehaviorTree>>>,
 }
 
 impl TaskAddData{
-	pub fn new(unit:&Weak<RefCell<Box<dyn IUnit>>>,owner:&Weak<RefCell<Box<dyn IBehaviorTree>>>,) -> Self{
+	pub fn new(unit:&Weak<RefCell<Box<dyn IUnit>>>) -> Self{
 		Self{
 			parent:None,
 			parent_index:-1,
@@ -92,7 +91,6 @@ impl TaskAddData{
 			unit:unit.clone(),
 			error_task:-1,
 			error_task_name:"".to_string(),
-			owner:owner.clone(),
 		}
 	}
 }
@@ -103,8 +101,6 @@ pub trait IParser{
 
 
 pub trait IBehaviorTree{
-	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>);
-	
 	fn id(&self)->u64;
 
 	fn enable(&mut self)->Result<(), Box<dyn std::error::Error>>;
