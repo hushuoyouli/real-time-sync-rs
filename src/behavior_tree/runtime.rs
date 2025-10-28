@@ -789,10 +789,10 @@ impl BehaviorTree{
 							}
 
 							for j in (i..self.conditional_reevaluate.len()).rev(){
-								let jConditionalReval = self.conditional_reevaluate[j].clone();
-								if self.is_parent_task(composite_index, jConditionalReval.index) {
-									let jIndex = jConditionalReval.index;
-									self.conditional_reevaluate_map.remove(&jIndex);
+								let j_conditional_reval = self.conditional_reevaluate[j].clone();
+								if self.is_parent_task(composite_index, j_conditional_reval.index) {
+									let j_index = j_conditional_reval.index;
+									self.conditional_reevaluate_map.remove(&j_index);
 									self.conditional_reevaluate.remove(j);
 								}
 							}
