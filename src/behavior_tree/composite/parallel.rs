@@ -68,6 +68,14 @@ impl IParentTask for Parallel{
         }
     }
 
+    fn on_conditional_abort(&mut self, index:u32,task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree) {}
+
+    fn on_cancel_conditional_abort(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree) {}
+
+    fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree) {
+        self.current_child_index = 0;
+        self.execution_status.resize(self.children_len as usize, TaskStatus::Inactive);
+    }
 
 }
 
