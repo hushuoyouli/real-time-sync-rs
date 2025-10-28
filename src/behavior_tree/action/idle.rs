@@ -5,6 +5,13 @@ pub struct Idle{
 
 }
 
+impl Idle{
+    pub fn new() -> Self{
+        Self{}
+    }
+}
+
+
 impl IAction for Idle{
     fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus {
         TaskStatus::Running
