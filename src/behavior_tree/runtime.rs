@@ -761,7 +761,7 @@ impl BehaviorTree{
 		let len = conditional_reevaluatees.len();
 		for i in (0..len).rev(){
 			
-			let conditional_reevaluate = &mut conditional_reevaluatees[i];
+			let conditional_reevaluate: &mut Rc<RefCell<Box<ConditionalReevaluate>>> = &mut conditional_reevaluatees[i];
 			if conditional_reevaluate.borrow().composite_index != -1{
 				let condition_index = conditional_reevaluate.borrow().index;
 				let condition_status = conditional_reevaluate.borrow().task_status.clone();
