@@ -472,7 +472,7 @@ pub struct BehaviorTree{
 	stack_id_to_parallel_task_id:HashMap<u32, u32>,
 	parallel_task_id_to_stack_ids:HashMap<i32, Vec<u32>>,
 
-	runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,
+	runtime_event_handle:Box<dyn IRuntimeEventHandle>,
 	initialize_for_base_flag:bool,
     
 	parser:Rc<Box<dyn IParser>>,
@@ -483,7 +483,7 @@ pub struct BehaviorTree{
 #[allow(unused_variables)]
 impl BehaviorTree{
 	pub fn new(id: u64, config:&Vec<u8>,	unit:&Weak<RefCell<Box<dyn IUnit>>>,  clock:&Weak<RefCell<Box<dyn IClock>>>, 
-		runtime_event_handle:Rc<Box<dyn IRuntimeEventHandle>>,parser:Rc<Box<dyn IParser>>) -> Rc<RefCell<Box<dyn IBehaviorTree>>>{
+		runtime_event_handle:Box<dyn IRuntimeEventHandle>,parser:Rc<Box<dyn IParser>>) -> Rc<RefCell<Box<dyn IBehaviorTree>>>{
 		let behavior_tree = Self{
 			id,
 			task_list: Vec::new(),
