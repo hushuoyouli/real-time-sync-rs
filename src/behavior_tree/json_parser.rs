@@ -15,13 +15,15 @@ pub struct JsonParser{
 }
 
 impl JsonParser{
-    pub fn new() -> Self{
-        Self{
+    pub fn new() -> Rc<Box<dyn IParser>>{
+        let parser = Self{
             action_fn: HashMap::new(),
             conditional_fn: HashMap::new(),
             composite_fn: HashMap::new(),
             decorator_fn: HashMap::new(),
-        }
+        };
+
+        Rc::new(Box::new(parser))
     }
 
     pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>){
