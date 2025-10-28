@@ -95,7 +95,7 @@ impl TaskAddData{
 }
 
 pub trait IParser{
-	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>;
+	fn deserialize(&self, config:&Vec<u8>, task_add_data:&mut TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>;
 }
 
 

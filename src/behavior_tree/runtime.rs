@@ -528,9 +528,9 @@ impl BehaviorTree{
 		self.parent_composite_index.clear();
 		self.child_conditional_index.clear();
 		self.root_task = None;
-		let task_add_data: TaskAddData = TaskAddData::new();
+		let mut task_add_data: TaskAddData = TaskAddData::new();
 
-		let root_task = self.parser.deserialize(&self.config, &task_add_data)?;
+		let root_task = self.parser.deserialize(&self.config, &mut task_add_data)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", RealTaskType::Decorator(entry_root));
 		root_proxy.add_child(&root_task);

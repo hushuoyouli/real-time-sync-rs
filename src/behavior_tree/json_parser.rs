@@ -152,12 +152,12 @@ impl JsonParser{
 }
 
 impl IParser for JsonParser{
-    fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+    fn deserialize(&self, config:&Vec<u8>, task_add_data:&mut TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
         let json: serde_json::Value = from_str(std::str::from_utf8(config)?).unwrap();
         let root_task_json: &serde_json::Value = json.get("RootTask").ok_or("json文件缺少RootTask的配置")?;
         let mut all_tasks:Vec<Weak<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
         let id_2_task = Rc::new(RefCell::new(Box::new(HashMap::new())));
-        let root_task = self.initialize_task(root_task_json, &id_2_task,&mut all_tasks)?;
+        let mut root_task = self.initialize_task(root_task_json, &id_2_task,&mut all_tasks)?;
 
         let mut detached_tasks:Vec<Rc<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
         if let Some(_) = json.get("DetachedTasksConfigs"){
@@ -172,6 +172,12 @@ impl IParser for JsonParser{
         for task in all_tasks.iter(){
             let task = task.upgrade().unwrap();
             task.borrow_mut().initialize_variables()?;
+        }
+
+        self.initialize_parent_task(&mut root_task,task_add_data);
+
+        for detached_task in detached_tasks.iter_mut(){
+            self.initialize_parent_task(detached_task,task_add_data);
         }
 
         Ok(root_task)
