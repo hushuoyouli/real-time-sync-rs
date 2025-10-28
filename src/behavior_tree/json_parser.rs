@@ -25,7 +25,8 @@ impl JsonParser{
         };
 
         //  注册默认节点
-        parser.register_composite_fn("Sequence", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Sequence::new())});
+        parser.register_composite_fn("BehaviorDesigner.Runtime.Tasks.Sequence", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Sequence::new())});
+        
 
         Rc::new(RefCell::new(Box::new(parser)))
     }
