@@ -1,4 +1,4 @@
-use  std::rc::{Rc, Weak};
+use  std::{rc::{Rc, Weak}, cell::RefCell};
 use super::consts::{TaskStatus, AbortType};
 
 pub trait IUnit {
@@ -72,18 +72,18 @@ impl  RunningStack {
 }
 
 pub struct TaskAddData{
-	pub parent:Option<Weak<Box<dyn ITaskProxy>>>,
+	pub parent:Option<Weak<RefCell<Box<dyn ITaskProxy>>>>,
 	pub parent_index:i32,
 	pub depth:u32,
 	pub composite_parent_index:u32,
-	pub unit:Weak<Box<dyn IUnit>>,
+	pub unit:Weak<RefCell<Box<dyn IUnit>>>,
 	pub error_task:i32,
 	pub error_task_name:String,
-	pub owner:Weak<Box<dyn IBehaviorTree>>,
+	pub owner:Weak<RefCell<Box<dyn IBehaviorTree>>>,
 }
 
 impl TaskAddData{
-	pub fn new(unit:&Weak<Box<dyn IUnit>>,owner:&Weak<Box<dyn IBehaviorTree>>,) -> Self{
+	pub fn new(unit:&Weak<RefCell<Box<dyn IUnit>>>,owner:&Weak<RefCell<Box<dyn IBehaviorTree>>>,) -> Self{
 		Self{
 			parent:None,
 			parent_index:-1,
@@ -98,12 +98,12 @@ impl TaskAddData{
 }
 
 pub trait IParser{
-	fn deserialize(&self, config:&Vec<u8>, unit:&Weak<Box<dyn IUnit>>, task_add_data:&TaskAddData) -> Result<Rc<Box<dyn ITaskProxy>>, Box<dyn std::error::Error>>;
+	fn deserialize(&self, config:&Vec<u8>, unit:&Weak<RefCell<Box<dyn IUnit>>>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>;
 }
 
 
 pub trait IBehaviorTree{
-	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<Box<dyn IBehaviorTree>>>);
+	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>);
 	
 	fn id(&self)->u64;
 
@@ -112,9 +112,9 @@ pub trait IBehaviorTree{
 	fn update(&mut self);
 	fn is_runnning(&self)->bool;
 
-	fn unit(&self)->Weak<Box<dyn IUnit>>;
+	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>;
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector);
-	fn clock(&self)->Weak<Box<dyn IClock>>;
+	fn clock(&self)->Weak<RefCell<Box<dyn IClock>>>;
 }
 
 
@@ -134,10 +134,10 @@ pub struct SyncDataCollector {
 }
 
 impl SyncDataCollector{
-	pub fn new() -> Rc<Box<Self>>{
-		Rc::new(Box::new(Self{
+	pub fn new() -> Rc<RefCell<Box<Self>>>{
+		Rc::new(RefCell::new(Box::new(Self{
 			datas: Vec::new(),
-		}))
+		})))
 	}
 
 	pub fn add_data(&mut self, data:Vec<u8>){
@@ -156,10 +156,10 @@ pub trait ITaskProxy{
 	fn instant(&self)->bool;
 	
 	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>;
-	fn set_owner(&mut self, owner:Option<Weak<Box<dyn IBehaviorTree>>>);
-	fn owner(&self)->Option<Weak<Box<dyn IBehaviorTree>>>;
-	fn set_parent(&mut self, parent:Option<Weak<Box<dyn ITaskProxy>>>);
-	fn parent(&self)->Option<Weak<Box<dyn ITaskProxy>>>;
+	fn set_owner(&mut self, owner:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>);
+	fn owner(&self)->Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>;
+	fn set_parent(&mut self, parent:Option<Weak<RefCell<Box<dyn ITaskProxy>>>>);
+	fn parent(&self)->Option<Weak<RefCell<Box<dyn ITaskProxy>>>>;
 	fn corresponding_type(&self)->String;
 
 	fn name(&self)->String;
@@ -171,7 +171,7 @@ pub trait ITaskProxy{
 	fn disabled(&self)->bool;
 	fn set_disabled(&mut self, disabled:bool);
 
-	fn unit(&self)->Weak<Box<dyn IUnit>>;
+	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>;
 	fn on_awake(&mut self);
     fn on_start(&mut self);
     fn on_end(&mut self);
@@ -183,8 +183,8 @@ pub trait ITaskProxy{
 	
 	fn rebuild_sync_datas(&self);
 	
-	fn set_sync_data_collector(&mut self, collector:Option<Rc<Box<SyncDataCollector>>>);
-	fn sync_data_collector(&self)->Option<Rc<Box<SyncDataCollector>>>;
+	fn set_sync_data_collector(&mut self, collector:Option<Rc<RefCell<Box<SyncDataCollector>>>>);
+	fn sync_data_collector(&self)->Option<Rc<RefCell<Box<SyncDataCollector>>>>;
 
 	//	IParentTask接口
 	fn can_run_parallel_children(&self)->bool;
@@ -218,11 +218,11 @@ pub trait ITaskProxy{
 
 	fn on_cancel_conditional_abort(&mut self);
 
-	fn children(&self)->&Vec<Rc<Box<dyn ITaskProxy>>>;
+	fn children(&self)->&Vec<Rc<RefCell<Box<dyn ITaskProxy>>>>;
 
-	fn children_mut(&mut self)->&mut Vec<Rc<Box<dyn ITaskProxy>>>;
+	fn children_mut(&mut self)->&mut Vec<Rc<RefCell<Box<dyn ITaskProxy>>>>;
 	
-	fn add_child(&mut self, task:&Rc<Box<dyn ITaskProxy>>);
+	fn add_child(&mut self, task:&Rc<RefCell<Box<dyn ITaskProxy>>>);
 	fn abort_type(&self)->AbortType;
 	
 	fn set_abort_type(&mut self, abort_type:AbortType);
