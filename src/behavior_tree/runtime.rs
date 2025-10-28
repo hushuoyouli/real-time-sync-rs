@@ -648,7 +648,7 @@ impl BehaviorTree{
 			}
 
 			let mut parent_task = self.root_task.as_mut().unwrap().clone();
-			let mut children = Rc::get_mut(&mut parent_task).unwrap().children_mut().clone();
+			let mut children = parent_task.borrow_mut().children_mut().clone();
 
 
 			for child in children.iter_mut(){
@@ -659,35 +659,36 @@ impl BehaviorTree{
 		Ok(())
 	}
 
-	fn parse_child_task(&mut self, child_task:&mut Rc<Box<dyn ITaskProxy>>, parent_task:&Rc<Box<dyn ITaskProxy>>, mut parent_composite_index: i32)->Result<(), Box<dyn std::error::Error>>{
+	fn parse_child_task(&mut self, child_task:&mut Rc<RefCell<Box<dyn ITaskProxy>>>, parent_task:&Rc<RefCell<Box<dyn ITaskProxy>>>, mut parent_composite_index: i32)->Result<(), Box<dyn std::error::Error>>{
 		let index = self.task_list.len() as i32;
-		let parent_index = parent_task.id();
+		let parent_index = parent_task.borrow().id();
 
 		self.children_index[parent_index as usize].push(index);
 		self.relative_child_index.push(self.children_index[parent_index as usize].len() as i32 - 1);
-		self.task_list.push(child_task.clone());
-		self.parent_index.push(parent_task.id());
+		self.task_list.push(Rc::downgrade(child_task));
+		self.parent_index.push(parent_task.borrow().id());
 		self.parent_composite_index.push(parent_composite_index);
 		self.child_conditional_index.push(Vec::with_capacity(10));
 		self.children_index.push(Vec::with_capacity(10));
 
-		Rc::get_mut(child_task).unwrap().set_id(index);
-		Rc::get_mut(child_task).unwrap().set_parent(Some(Rc::downgrade(parent_task)));
-		Rc::get_mut(child_task).unwrap().set_owner(self.self_weak_ref.clone());
+		child_task.borrow_mut().set_id(index);
+		child_task.borrow_mut().set_parent(Some(Rc::downgrade(parent_task)));
+		child_task.borrow_mut().set_owner(self.self_weak_ref.clone());
+		
 
-		if child_task.is_implements_iparenttask(){
-			if child_task.is_implements_icomposite(){
-				parent_composite_index = child_task.id();
+		if child_task.borrow().is_implements_iparenttask(){
+			if child_task.borrow().is_implements_icomposite(){
+				parent_composite_index = child_task.borrow().id();
 			}
 
-			let mut children = Rc::get_mut(child_task).unwrap().children_mut().clone();
+			let mut children = child_task.borrow_mut().children_mut().clone();
 			for child in children.iter_mut(){
 				self.parse_child_task(child, child_task, parent_composite_index)?;
 			}
 		}else{
-			if child_task.is_implements_iconditional(){
+			if child_task.borrow().is_implements_iconditional(){
 				if parent_composite_index != -1{
-					self.child_conditional_index[parent_composite_index as usize].push(child_task.id());
+					self.child_conditional_index[parent_composite_index as usize].push(child_task.borrow().id());
 				}
 			}
 		}
@@ -720,10 +721,10 @@ impl BehaviorTree{
 		self.active_stack.push(stack.clone());
 		self.non_instant_task_status.push(TaskStatus::Inactive);
 
-		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
 		self.runtime_event_handle.new_stack(self, &stack_data);
-		self.stack_id_to_stack_data.insert(stack_id, Rc::new(Box::new(stack_data)));
+		self.stack_id_to_stack_data.insert(stack_id, Rc::new(RefCell::new(Box::new(stack_data))));
 		return stack_index;
 	}
 
@@ -763,84 +764,84 @@ impl BehaviorTree{
 			self.non_instant_task_status[stack_index] = TaskStatus::Running;
 			
 			let task = &mut self.task_list.get(task_index as usize).unwrap();
-	        let mut task = task.clone();
+	        let mut task = task.clone().upgrade().unwrap();
 			let stack = &mut self.active_stack[stack_index];
-			let stack_data: Rc<Box<StackRuntimeData>> = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-			let now_timestamp= self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			let task_execute_id= self.next_task_execute_id();
 	
-			let task_runtime_data= TaskRuntimeData::new(task.id(), now_timestamp, task_execute_id, stack_data.stack_id);
-			self.task_datas.insert(task.id(), task_runtime_data);
+			let task_runtime_data= TaskRuntimeData::new(task.borrow().id(), now_timestamp, task_execute_id, stack_data.borrow().stack_id);
+			self.task_datas.insert(task.borrow().id(), task_runtime_data);
 	
 			//	TODO:这里需要截获初始化的数据？
 			{
-				let task = Rc::get_mut(&mut task).unwrap();
-				let task: &dyn ITaskProxy = task.as_ref();
-				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+				let task = task.borrow();
+				let task = task.as_ref();
+				self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task);
 			}
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
-			if task.is_implements_iparenttask() {
-				if task.can_run_parallel_children() {
-					let task = Rc::get_mut(&mut task).unwrap();
-					let task: &dyn ITaskProxy = task.as_ref();
-					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+			if task.borrow().is_implements_iparenttask() {
+				if task.borrow().can_run_parallel_children() {
+					let task = task.borrow();
+					let task = task.as_ref();
+					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task);
 				}
 			}
 	
 			//	先清理数据
-			if task.is_implements_iaction() {
-				if task.is_sync_to_client() {
-					let mut task = task.clone();
-					let task = Rc::get_mut(&mut task).unwrap();
-					let task: &mut dyn ITaskProxy = task.as_mut();
-					let mut sync_data_collector = task.sync_data_collector().unwrap();
-					Rc::get_mut(&mut sync_data_collector).unwrap().get_and_clear();
+			if task.borrow().is_implements_iaction() {
+				if task.borrow().is_sync_to_client() {
+					let task = task.borrow();
+					let task = task.as_ref();
+					let sync_data_collector = task.sync_data_collector().unwrap();
+					sync_data_collector.borrow_mut().get_and_clear();
 				}
 			}
 
 			{
-				let task = Rc::get_mut(&mut task).unwrap();
-				task.on_start();
+				let task = task.borrow_mut().on_start();
+				//task.on_start();
 			}
 
-			if task.is_implements_iaction() {
+			if task.borrow().is_implements_iaction() {
 				//action := task.(iface.IAction)
-				if task.is_sync_to_client() {
-					let mut sync_data_collector = task.sync_data_collector().unwrap();
-					let datas = Rc::get_mut(&mut sync_data_collector).unwrap().get_and_clear();
+				if task.borrow().is_sync_to_client() {
+					let mut sync_data_collector = task.borrow().sync_data_collector().unwrap();
+					let datas = sync_data_collector.borrow_mut().get_and_clear();
 
-					let task = Rc::get_mut(&mut task).unwrap();
-					let task: &dyn ITaskProxy = task.as_ref();
-					let mut behavior_tree = self.self_weak_ref.as_ref().unwrap().upgrade().unwrap();
-					let behavior_tree = Rc::get_mut(&mut behavior_tree).unwrap();
-					let behavior_tree: &dyn IBehaviorTree = behavior_tree.as_ref();
-					self.runtime_event_handle.action_post_on_start(behavior_tree, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task, datas);
+					let task = task.borrow();
+					let task = task.as_ref();
+
+					let mut behavior_tree = self.self_weak_ref.as_ref().unwrap().upgrade();
+					let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
+					let behavior_tree = behavior_tree.as_ref();
+					self.runtime_event_handle.action_post_on_start(behavior_tree, &self.task_datas.get(&task.id()).unwrap(), &stack_data.borrow(), task, datas);
 				}
 			}
 	
-			if task.is_implements_iparenttask() {
+			if task.borrow().is_implements_iparenttask() {
 				//	可以并发的父节点有特殊处理
 				
-				if task.can_run_parallel_children() {
-					self.parallel_task_id_to_stack_ids.insert(task.id(), Vec::new());
+				if task.borrow().can_run_parallel_children() {
+					self.parallel_task_id_to_stack_ids.insert(task.borrow().id(), Vec::new());
 					//p.parallelTaskID2StackIDs[task.ID()] = make([]int, 0)
 				}
 
 				 
-				if task.is_implements_icomposite() {
-					match task.abort_type() {
+				if task.borrow().is_implements_icomposite() {
+					match task.borrow().abort_type() {
 						AbortType::None => (),
 						_ => {
 							let mut conditional_reevaluates = self.conditional_reevaluate.clone();
 						    for mut conditional_reevaluate in  conditional_reevaluates.iter_mut(){
-								if self.is_parent_task(task.id(), conditional_reevaluate.index) {
+								if self.is_parent_task(task.borrow().id(), conditional_reevaluate.index) {
 									let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
-									conditional_reevaluate.composite_index = task.id();
+									conditional_reevaluate.composite_index = task.borrow().id();
 								}
 							}
-							match task.abort_type() {
+							match task.borrow().abort_type() {
 								AbortType::LowerPriority => {
-									let mut child_conditional_indexes = self.child_conditional_index[task.id() as usize].clone();
+									let mut child_conditional_indexes = self.child_conditional_index[task.borrow().id() as usize].clone();
 									for child_conditional_index in child_conditional_indexes.into_iter(){
 										let child_conditional_indexes = child_conditional_index as u32;
 										if let Some(mut conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
@@ -877,8 +878,10 @@ impl BehaviorTree{
 				let condition_index = conditional_reevaluate.index;
 				let condition_status = conditional_reevaluate.task_status.clone();
 
-				let mut condition_task =&mut self.task_list[condition_index as usize];
-				let condition_task = Rc::get_mut(&mut condition_task).unwrap();
+				let condition_task =&mut self.task_list[condition_index as usize];
+				let condition_task = condition_task.upgrade().unwrap();
+				let mut condition_task = condition_task.borrow_mut();
+				//let condition_task = condition_task.borrow().as_ref();
 
 				if condition_task.on_update() != condition_status {
 					let composite_index = conditional_reevaluate.composite_index;
@@ -912,8 +915,10 @@ impl BehaviorTree{
 								if self.is_parent_task(composite_index, conditional_reevaluate.index) {
 									let mut task_index = self.parent_index[conditional_reevaluate.index as usize];
 									while task_index != -1 && task_index != conditional_reevaluate.composite_index {
-										let mut task = &mut self.task_list[task_index as usize];
-										let task = Rc::get_mut(&mut task).unwrap();
+										let task = &mut self.task_list[task_index as usize];
+										let task = task.upgrade().unwrap();
+										let mut task = task.borrow_mut();
+
 										task.on_cancel_conditional_abort();
 										task_index = self.parent_index[task_index as usize];
 									}
@@ -936,12 +941,12 @@ impl BehaviorTree{
 
 							for j in (0..conditional_parent_indexes.len()).rev(){
 								let parent_task = &mut self.task_list[conditional_parent_indexes[j] as usize];
-								let parent_task = Rc::get_mut(parent_task).unwrap();
+								let mut parent_task = parent_task.upgrade().unwrap();
 
 								if j == 0 {
-									parent_task.on_conditional_abort(self.relative_child_index[condition_index as usize] as u32);
+									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[condition_index as usize] as u32);
 								}else{
-									parent_task.on_conditional_abort(self.relative_child_index[conditional_parent_indexes[j - 1] as usize] as u32);
+									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[conditional_parent_indexes[j - 1] as usize] as u32);
 								}
 							}
 						}
@@ -955,28 +960,29 @@ impl BehaviorTree{
 		if stack_index < self.active_stack.len() {
 			let stack = &self.active_stack[stack_index];
 			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-			let now_timestamp = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
-			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
-				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
+			let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
+			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.borrow().stack_id as u32)) {
+				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.borrow().stack_id as u32)).unwrap();
 				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap();
 				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap();
 				let task = &mut self.task_list[task_runtime_data.task_id as usize].clone();
-				let task = Rc::get_mut(task).unwrap();
-				let task: &dyn ITaskProxy = task.as_ref();
-				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data, task, &stack_data, now_timestamp);
+				let task = task.upgrade().unwrap();
+				let task = task.borrow();
+				let task = task.as_ref();
+				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data.borrow().as_ref(), task, &stack_data.borrow(), now_timestamp);
 				
-				self.stack_id_to_parallel_task_id.remove(&(stack_data.stack_id as u32));
+				self.stack_id_to_parallel_task_id.remove(&(stack_data.borrow().stack_id as u32));
                 let old_parallel_task_id_to_stack_ids = self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clone();
 				self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clear();
 				for stack_id in old_parallel_task_id_to_stack_ids.iter(){
-					if (*stack_id as usize) != stack_data.stack_id {
+					if (*stack_id as usize) != stack_data.borrow().stack_id {
 						self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().push(*stack_id);
 					}
 				}
 			}
 
-			self.runtime_event_handle.remove_stack(self, &stack_data, now_timestamp);
-			self.stack_id_to_stack_data.remove(&stack_data.stack_id);
+			self.runtime_event_handle.remove_stack(self, &stack_data.borrow(), now_timestamp);
+			self.stack_id_to_stack_data.remove(&stack_data.borrow().stack_id);
 			
 			self.active_stack.remove(stack_index);
 			self.non_instant_task_status.remove(stack_index);
@@ -1002,7 +1008,7 @@ impl BehaviorTree{
 }
 
 impl IBehaviorTree for BehaviorTree{
-	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<Box<dyn IBehaviorTree>>>){
+	fn set_self_weak_ref(&mut self, self_weak_ref:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>){
 		self.self_weak_ref = self_weak_ref;
 	}
 
@@ -1018,26 +1024,28 @@ impl IBehaviorTree for BehaviorTree{
 		self.initialize()?;
 
 		for task in self.task_list.iter_mut(){
-			let action = Rc::get_mut(task).unwrap();
-			if action.is_implements_iaction(){
-				if action.is_sync_to_client(){
-					action.set_sync_data_collector(Some(SyncDataCollector::new()));
+			let action = task.upgrade().unwrap();
+
+			//let action = Rc::get_mut(task).unwrap();
+			if action.borrow().is_implements_iaction(){
+				if action.borrow().is_sync_to_client(){
+					action.borrow_mut().set_sync_data_collector(Some(SyncDataCollector::new()));
 				};
 			}
 		}
 
 		let mut task_list = self.task_list.clone();
 		for task in task_list.iter_mut(){
-			let task = Rc::get_mut( task).unwrap();
-			if !task.disabled(){
-				task.on_awake();
+			let task = task.upgrade().unwrap();
+			if !task.borrow().disabled(){
+				task.borrow_mut().on_awake();
 			}
 		}
 
 		self.execution_status = TaskStatus::Inactive;
 		self.is_running = true;
 		
-		let now_timestamp_in_milli = self.clock.upgrade().as_ref().unwrap().timestamp_in_mill();
+		let now_timestamp_in_milli = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		self.runtime_event_handle.post_initialize(self, now_timestamp_in_milli);
 		self.initialize_first_stack_and_first_task = true;
 
@@ -1086,7 +1094,7 @@ impl IBehaviorTree for BehaviorTree{
 		self.is_running
 	}
 
-	fn unit(&self)->Weak<Box<dyn IUnit>>{
+	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>{
 		self.unit.clone()
 	}
 
@@ -1094,7 +1102,7 @@ impl IBehaviorTree for BehaviorTree{
 
 	}
 
-	fn clock(&self)->Weak<Box<dyn IClock>>{
+	fn clock(&self)->Weak<RefCell<Box<dyn IClock>>>{
 		self.clock.clone()
 	}
 }
