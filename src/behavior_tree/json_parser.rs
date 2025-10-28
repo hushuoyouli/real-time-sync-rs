@@ -3,9 +3,10 @@ use serde_json::from_str;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use super::interface::{IParser, TaskAddData,ITaskProxy, IAction, IConditional, IComposite, IDecorator, RealTaskType, IUnit};
+use super::interface::{IParser, TaskAddData,ITaskProxy, IAction, IConditional, IComposite, IDecorator, RealTaskType};
 use super::runtime::TaskProxy;
 use super::consts::AbortType;
+use super::composite::sequence::Sequence;
 
 pub struct JsonParser{
     action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
@@ -16,12 +17,15 @@ pub struct JsonParser{
 
 impl JsonParser{
     pub fn new() -> Rc<RefCell<Box<dyn IParser>>>{
-        let parser = Self{
+        let mut parser = Self{
             action_fn: HashMap::new(),
             conditional_fn: HashMap::new(),
             composite_fn: HashMap::new(),
             decorator_fn: HashMap::new(),
         };
+
+        //  注册默认节点
+        parser.register_composite_fn("Sequence", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Sequence::new())});
 
         Rc::new(RefCell::new(Box::new(parser)))
     }

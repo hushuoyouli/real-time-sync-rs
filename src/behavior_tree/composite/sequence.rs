@@ -8,7 +8,7 @@ pub struct Sequence{
 }
 
 impl Sequence{
-    fn new() -> Self{
+    pub fn new() -> Self{
         Self{
             current_child_index:0,
             execution_status:TaskStatus::Inactive,
