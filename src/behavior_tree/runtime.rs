@@ -28,8 +28,6 @@ pub struct TaskProxy{
 	children:Vec<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	real_task:RealTaskType,
 	sync_data_collector:Option<Rc<RefCell<Box<SyncDataCollector>>>>,
-	parent:Option<Weak<RefCell<Box<dyn ITaskProxy>>>>,
-	owner:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>,
 	instant:bool,
 }
 
@@ -45,8 +43,6 @@ impl TaskProxy{
 			children: Vec::new(),
 			real_task:real_task,
 			sync_data_collector: None,
-			parent: None,
-			owner:None,
 			instant:true,
 		}
 	}
@@ -73,23 +69,7 @@ impl ITaskProxy for TaskProxy {
 		};
 		self.real_task = real_task;
 		result
-	}
-	
-	fn set_owner(&mut self, owner:Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>){
-		self.owner = owner;
-	}
-
-	fn owner(&self)->Option<Weak<RefCell<Box<dyn IBehaviorTree>>>>{
-		self.owner.clone()
-	}
-
-	fn set_parent(&mut self, parent:Option<Weak<RefCell<Box<dyn ITaskProxy>>>>){
-		self.parent = parent;
-	}
-
-	fn parent(&self)->Option<Weak<RefCell<Box<dyn ITaskProxy>>>>{
-		self.parent.clone()
-	}
+	}	
 
 	fn corresponding_type(&self)->String{
 		self.corresponding_type.clone()
@@ -121,12 +101,7 @@ impl ITaskProxy for TaskProxy {
 	}
 
 
-	fn on_awake(&mut self){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-		//let behavior_tree: &dyn IBehaviorTree = behavior_tree.borrow_mut().as_ref();
-
+	fn on_awake(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_awake(self, behavior_tree),
@@ -138,11 +113,7 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-    fn on_start(&mut self){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+    fn on_start(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_start(self, behavior_tree),
@@ -154,11 +125,7 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-    fn on_end(&mut self){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+    fn on_end(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_end(self, behavior_tree),
@@ -170,11 +137,7 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-    fn on_complete(&mut self){		
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+    fn on_complete(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Action(action) => action.on_complete(self, behavior_tree),
@@ -187,11 +150,7 @@ impl ITaskProxy for TaskProxy {
 	}
 
 	//提供给Action与Conditional使用
-	fn on_update(&mut self)->TaskStatus{
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn on_update(&mut self, behavior_tree:&dyn IBehaviorTree)->TaskStatus{		
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let status = match &mut real_task {
 			RealTaskType::Action(action) => action.on_update(self, behavior_tree),
@@ -217,11 +176,7 @@ impl ITaskProxy for TaskProxy {
 		}
 	}
 	
-	fn rebuild_sync_datas(&self){
-		let mut behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn rebuild_sync_datas(&self, behavior_tree:&dyn IBehaviorTree){
 		match &self.real_task {
 			RealTaskType::Action(action) => action.rebuild_sync_datas(self, behavior_tree),
 			_ => {panic!("error");},
@@ -254,10 +209,7 @@ impl ITaskProxy for TaskProxy {
 		OverrideStatus
 	*/
 	//	CanRunParallelChildren	为false的时候调用
-	fn  on_child_executed1(&mut self, child_status:TaskStatus){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
+	fn  on_child_executed1(&mut self, child_status:TaskStatus, behavior_tree:&dyn IBehaviorTree){
 
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
@@ -269,11 +221,7 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-	fn  on_child_started0(&mut self){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn  on_child_started0(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_child_started0(self, behavior_tree),
@@ -285,11 +233,7 @@ impl ITaskProxy for TaskProxy {
 	}
 	//	CanRunParallelChildren	为true的时候调用
 	#[allow(unused_variables)]
-	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn  on_child_executed2(&mut self,index:u32, child_status:TaskStatus, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_child_executed2(index, child_status,self, behavior_tree),
@@ -300,10 +244,8 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-	fn 	on_child_started1(&mut self,index:u32){
-		let mut behavior_tree = self.owner.as_mut().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_mut().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
+	fn 	on_child_started1(&mut self,index:u32, behavior_tree:&dyn IBehaviorTree){
+
 
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		match &mut real_task {
@@ -315,11 +257,7 @@ impl ITaskProxy for TaskProxy {
 		self.real_task = real_task;
 	}
 
-	fn current_child_index(&self)->u32{
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn current_child_index(&self, behavior_tree:&dyn IBehaviorTree)->u32{
 		let result = match &self.real_task {
 			RealTaskType::Composite(composite) => composite.current_child_index(self, behavior_tree),
 			//RealTaskType::Decorator(decorator) => decorator.on_child_executed2(index, child_status,self, behavior_tree),
@@ -329,11 +267,7 @@ impl ITaskProxy for TaskProxy {
 		result
 	}
 
-	fn can_execute(&self)->bool{
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn can_execute(&self, behavior_tree:&dyn IBehaviorTree)->bool{
 		match &self.real_task {
 			RealTaskType::Composite(composite) => composite.can_execute(self, behavior_tree),
 			RealTaskType::Decorator(decorator) => decorator.can_execute(self, behavior_tree),
@@ -341,11 +275,7 @@ impl ITaskProxy for TaskProxy {
 		}
 	}
 	
-	fn decorate(&mut self, status:TaskStatus)->TaskStatus{
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn decorate(&mut self, status:TaskStatus, behavior_tree:&dyn IBehaviorTree)->TaskStatus{
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
 			RealTaskType::Composite(composite) => composite.decorate(status,self, behavior_tree),
@@ -362,11 +292,7 @@ impl ITaskProxy for TaskProxy {
 		OverrideStatus
 	*/
 	#[allow(unused_variables)]
-	fn override_status1(&mut self, status:TaskStatus)->TaskStatus{
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn override_status1(&mut self, status:TaskStatus, behavior_tree:&dyn IBehaviorTree)->TaskStatus{
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
 			RealTaskType::Composite(composite) => composite.override_status1(status,self, behavior_tree),
@@ -378,11 +304,7 @@ impl ITaskProxy for TaskProxy {
 		result
 	}
 
-	fn on_conditional_abort(&mut self, index:u32){
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn on_conditional_abort(&mut self, index:u32, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_conditional_abort(index,self, behavior_tree),
@@ -394,11 +316,7 @@ impl ITaskProxy for TaskProxy {
 		result
 	}
 
-	fn on_cancel_conditional_abort(&mut self){
-		let behavior_tree = self.owner.as_ref().unwrap().upgrade();
-		let behavior_tree = behavior_tree.as_ref().unwrap().borrow();
-		let behavior_tree = behavior_tree.as_ref();
-
+	fn on_cancel_conditional_abort(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result = match &mut real_task {
 			RealTaskType::Composite(composite) => composite.on_cancel_conditional_abort(self, behavior_tree),
@@ -628,7 +546,6 @@ impl BehaviorTree{
 		let root_task = self.parser.deserialize(&self.config, &self.unit.clone(), &task_add_data)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
-		root_proxy.set_owner(self.self_weak_ref.clone());
 		root_proxy.add_child(&root_task);
 				
 		self.root_task = Some(Rc::new(RefCell::new(Box::new(root_proxy))));
@@ -672,8 +589,6 @@ impl BehaviorTree{
 		self.children_index.push(Vec::with_capacity(10));
 
 		child_task.borrow_mut().set_id(index);
-		child_task.borrow_mut().set_parent(Some(Rc::downgrade(parent_task)));
-		child_task.borrow_mut().set_owner(self.self_weak_ref.clone());
 		
 
 		if child_task.borrow().is_implements_iparenttask(){
@@ -799,7 +714,7 @@ impl BehaviorTree{
 			}
 
 			{
-				let task = task.borrow_mut().on_start();
+				let task = task.borrow_mut().on_start(self);
 				//task.on_start();
 			}
 
@@ -883,7 +798,7 @@ impl BehaviorTree{
 				let mut condition_task = condition_task.borrow_mut();
 				//let condition_task = condition_task.borrow().as_ref();
 
-				if condition_task.on_update() != condition_status {
+				if condition_task.on_update(self) != condition_status {
 					let composite_index = conditional_reevaluate.composite_index;
 					for j in (0..self.active_stack.len()).rev(){
 						if self.active_stack[j].len() > 0{
@@ -919,7 +834,7 @@ impl BehaviorTree{
 										let task = task.upgrade().unwrap();
 										let mut task = task.borrow_mut();
 
-										task.on_cancel_conditional_abort();
+										task.on_cancel_conditional_abort(self);
 										task_index = self.parent_index[task_index as usize];
 									}
 								}
@@ -944,9 +859,9 @@ impl BehaviorTree{
 								let mut parent_task = parent_task.upgrade().unwrap();
 
 								if j == 0 {
-									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[condition_index as usize] as u32);
+									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[condition_index as usize] as u32, self);
 								}else{
-									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[conditional_parent_indexes[j - 1] as usize] as u32);
+									parent_task.borrow_mut().on_conditional_abort(self.relative_child_index[conditional_parent_indexes[j - 1] as usize] as u32, self);
 								}
 							}
 						}
@@ -1038,7 +953,7 @@ impl IBehaviorTree for BehaviorTree{
 		for task in task_list.iter_mut(){
 			let task = task.upgrade().unwrap();
 			if !task.borrow().disabled(){
-				task.borrow_mut().on_awake();
+				task.borrow_mut().on_awake(self);
 			}
 		}
 
@@ -1070,7 +985,7 @@ impl IBehaviorTree for BehaviorTree{
 			for j in (0..self.active_stack.len()).rev(){
 				let mut status = TaskStatus::Inactive;
 				let mut start_index = -1;
-				let mut task_index = 0;
+				let mut task_index;
 
 				let current_stack = self.active_stack[j].clone();
 				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {

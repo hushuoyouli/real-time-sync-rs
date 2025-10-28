@@ -139,8 +139,6 @@ impl JsonParser{
     fn initialize_parent_task(&self, task_proxy:&mut Rc<RefCell<Box<dyn ITaskProxy>>>, task_add_data:&mut TaskAddData){
         let task_proxy_bak = task_proxy.clone();
         let task_proxy = Rc::get_mut(task_proxy).unwrap();
-        task_proxy.borrow_mut().set_parent(task_add_data.parent.clone());
-        task_proxy.borrow_mut().set_owner(Some(task_add_data.owner.clone()));
         
         if task_proxy.borrow().is_implements_iparenttask(){
             let old_parent = std::mem::replace(&mut task_add_data.parent, Some(Rc::downgrade(&task_proxy_bak)));
