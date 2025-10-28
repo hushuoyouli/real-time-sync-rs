@@ -108,7 +108,7 @@ impl JsonParser{
             return Err("ID is 0".into());
         }
 
-        let mut task_proxy:Rc<RefCell<Box<dyn ITaskProxy>>> = Rc::new(RefCell::new(Box::new(task_proxy)));
+        let task_proxy:Rc<RefCell<Box<dyn ITaskProxy>>> = Rc::new(RefCell::new(Box::new(task_proxy)));
         let id_2_task_bak= id_2_task.clone();
 
         let mut id_2_task = id_2_task.upgrade().unwrap();
