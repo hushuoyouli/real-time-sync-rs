@@ -263,7 +263,7 @@ pub trait IRuntimeEventHandle {
 
 #[allow(unused_variables)]
 pub trait IAction {
-	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>{Ok(())}
+	fn initialize_variables(&mut self, task_proxy:&dyn ITaskProxy)->Result<(), Box<dyn std::error::Error>>{Ok(())}
 	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
@@ -280,7 +280,7 @@ pub trait IAction {
 
 #[allow(unused_variables)]
 pub trait IConditional{
-	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>{Ok(())}
+	fn initialize_variables(&mut self, task_proxy:&dyn ITaskProxy)->Result<(), Box<dyn std::error::Error>>{Ok(())}
 	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
@@ -291,7 +291,7 @@ pub trait IConditional{
 
 #[allow(unused_variables)]
 pub trait  IParentTask {
-	fn initialize_variables(&mut self)->Result<(), Box<dyn std::error::Error>>{Ok(())}
+	fn initialize_variables(&mut self, task_proxy:&dyn ITaskProxy)->Result<(), Box<dyn std::error::Error>>{Ok(())}
 	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
     fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}   
     fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}

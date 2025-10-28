@@ -60,10 +60,10 @@ impl ITaskProxy for TaskProxy {
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
 		let result =
 		match &mut real_task {
-			RealTaskType::Action(action) => action.initialize_variables(),
-			RealTaskType::Composite(composite) => composite.initialize_variables(),
-			RealTaskType::Decorator(decorator) => decorator.initialize_variables(),
-			RealTaskType::Conditional(conditional) => conditional.initialize_variables(),
+			RealTaskType::Action(action) => action.initialize_variables(self),
+			RealTaskType::Composite(composite) => composite.initialize_variables(self),
+			RealTaskType::Decorator(decorator) => decorator.initialize_variables(self),
+			RealTaskType::Conditional(conditional) => conditional.initialize_variables(self),
 		};
 		self.real_task = real_task;
 		result
