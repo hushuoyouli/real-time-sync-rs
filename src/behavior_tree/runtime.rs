@@ -452,7 +452,7 @@ pub struct BehaviorTree{
     active_stack :Vec<Rc<Box<RunningStack>>>,
 	non_instant_task_status:Vec<TaskStatus>,
 	conditional_reevaluate:Vec<Rc<Box<ConditionalReevaluate>>>,
-	conditional_reevaluate_map:HashMap<u32, Rc<Box<ConditionalReevaluate>>>,
+	conditional_reevaluate_map:HashMap<i32, Rc<Box<ConditionalReevaluate>>>,
 
 	parent_composite_index:Vec<i32>,
 	child_conditional_index:Vec<Vec<i32>>,
@@ -742,7 +742,7 @@ impl BehaviorTree{
 								AbortType::LowerPriority => {
 									let mut child_conditional_indexes = self.child_conditional_index[task.borrow().id() as usize].clone();
 									for child_conditional_index in child_conditional_indexes.into_iter(){
-										let child_conditional_indexes = child_conditional_index as u32;
+										let child_conditional_indexes = child_conditional_index;
 										if let Some(mut conditional_reevaluate) = self.conditional_reevaluate_map.get_mut(&child_conditional_indexes){
 											let conditional_reevaluate = Rc::get_mut(&mut conditional_reevaluate).unwrap();
 											conditional_reevaluate.composite_index = -1;
@@ -802,7 +802,7 @@ impl BehaviorTree{
 							for j in (i..self.conditional_reevaluate.len()).rev(){
 								let jConditionalReval = self.conditional_reevaluate[j].clone();
 								if self.is_parent_task(composite_index, jConditionalReval.index) {
-									let jIndex = jConditionalReval.index as u32;
+									let jIndex = jConditionalReval.index;
 									self.conditional_reevaluate_map.remove(&jIndex);
 									self.conditional_reevaluate.remove(j);
 								}
@@ -828,7 +828,7 @@ impl BehaviorTree{
 
 							update_condition_indexes.push(conditional_reevaluate.clone());
 							//是否需要把当前的conditionalReevaluate也删除掉？需要
-							self.conditional_reevaluate_map.remove(&(condition_index as u32));
+							self.conditional_reevaluate_map.remove(&condition_index);
 							self.conditional_reevaluate.remove(i);
 
 							let mut conditional_parent_indexes :Vec<i32> = Vec::with_capacity(10);
@@ -893,7 +893,7 @@ impl BehaviorTree{
 			let conditional_reevaluate = self.conditional_reevaluate[i].clone();
 			if self.is_parent_task(composite_index, conditional_reevaluate.composite_index){
 				let conditional_index = conditional_reevaluate.index;
-				self.conditional_reevaluate_map.remove(&(conditional_index as u32));
+				self.conditional_reevaluate_map.remove(&conditional_index);
 				self.conditional_reevaluate.remove(i);
 			}
 		}
