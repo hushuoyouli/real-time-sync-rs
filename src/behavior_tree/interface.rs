@@ -226,6 +226,8 @@ pub trait ITaskProxy{
 
 	//是否是parent task
 	fn is_implements_iparenttask(&self)-> bool;
+
+	fn send_sync_data(&mut self, data:Vec<u8>);
 }
 
 pub trait IRuntimeEventHandle {
@@ -260,12 +262,12 @@ pub trait IRuntimeEventHandle {
 
 #[allow(unused_variables)]
 pub trait IAction {
-	fn initialize_variables(&mut self, task_proxy:&dyn ITaskProxy)->Result<(), Box<dyn std::error::Error>>{Ok(())}
-	fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
-    fn on_start(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
-    fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
-    fn on_end(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
-    fn on_complete(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+	fn initialize_variables(&mut self, task_proxy:&mut dyn ITaskProxy)->Result<(), Box<dyn std::error::Error>>{Ok(())}
+	fn on_awake(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_start(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_update(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus;
+    fn on_end(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
+    fn on_complete(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree){}
 
 	//	默认不需要同步
 	fn is_sync_to_client(&self)->bool{

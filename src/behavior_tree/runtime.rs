@@ -10,7 +10,7 @@ use super::interface::{IClock, ITaskProxy,IBehaviorTree,
 
 pub struct EmptyAction;
 impl IAction for EmptyAction {
-	fn on_update(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{
+	fn on_update(&mut self, task_proxy:&mut dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus{
 		TaskStatus::Success
 	}
 }
@@ -379,6 +379,12 @@ impl ITaskProxy for TaskProxy {
 			RealTaskType::Composite(_) => true,
 			RealTaskType::Decorator(_) => true,
 			_ => false,
+		}
+	}
+
+	fn send_sync_data(&mut self, data:Vec<u8>){
+		if let Some(collector) = self.sync_data_collector.as_mut(){
+			collector.borrow_mut().add_data(data.clone());
 		}
 	}
 }
