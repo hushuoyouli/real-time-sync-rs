@@ -1,11 +1,11 @@
 use super::super::interface::{IDecorator, IParentTask, ITaskProxy, IBehaviorTree};
 use super::super::consts::TaskStatus;
 
-pub struct ReturnFailure{
+pub struct ReturnSuccess{
     pub execution_status:TaskStatus,
 }
 
-impl ReturnFailure{
+impl ReturnSuccess{
     pub fn new() -> Self{
         Self{
             execution_status:TaskStatus::Inactive,
@@ -13,7 +13,7 @@ impl ReturnFailure{
     }
 }
 
-impl IParentTask for ReturnFailure{
+impl IParentTask for ReturnSuccess{
     fn on_awake(&mut self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree) {
         self.execution_status = TaskStatus::Inactive;
     }
@@ -37,14 +37,14 @@ impl IParentTask for ReturnFailure{
     fn current_child_index(&self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->u32 {0}
 
     fn decorate(&mut self, status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus {
-        if status == TaskStatus::Success {
-            TaskStatus::Failure
+        if status == TaskStatus::Failure {
+            TaskStatus::Success
         }else{
             status
         }
     }
 }
 
-impl IDecorator for ReturnFailure{
+impl IDecorator for ReturnSuccess{
 
 }
