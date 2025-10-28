@@ -9,6 +9,7 @@ use super::consts::AbortType;
 use super::composite::sequence::Sequence;
 use super::composite::selector::Selector;
 use super::composite::parallel::Parallel;
+use super::composite::parallel_selector::ParallelSelector;
 
 pub struct JsonParser{
     action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
@@ -30,6 +31,7 @@ impl JsonParser{
         parser.register_composite_fn("BehaviorDesigner.Runtime.Tasks.Sequence", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Sequence::new())});
         parser.register_composite_fn("BehaviorDesigner.Runtime.Tasks.Selector", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Selector::new())});
         parser.register_composite_fn("BehaviorDesigner.Runtime.Tasks.Parallel", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(Parallel::new())});
+        parser.register_composite_fn("BehaviorDesigner.Runtime.Tasks.ParallelSelector", |variables, id_2_task| -> Box<dyn IComposite> {Box::new(ParallelSelector::new())});
 
         Rc::new(RefCell::new(Box::new(parser)))
     }
