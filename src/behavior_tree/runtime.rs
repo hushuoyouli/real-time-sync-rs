@@ -449,7 +449,7 @@ pub struct BehaviorTree{
     children_index :Vec<Vec<i32>>,
 	relative_child_index:Vec<i32>,
 
-    active_stack :Vec<Rc<Box<RunningStack>>>,
+    active_stack :Vec<Rc<RefCell<Box<RunningStack>>>>,
 	non_instant_task_status:Vec<TaskStatus>,
 	conditional_reevaluate:Vec<Rc<RefCell<Box<ConditionalReevaluate>>>>,
 	conditional_reevaluate_map:HashMap<i32, Rc<RefCell<Box<ConditionalReevaluate>>>>,
@@ -619,8 +619,8 @@ impl BehaviorTree{
 	fn add_stack(&mut self) -> usize{
 		let stack_id = self.next_stack_id();
 		let stack_index = self.active_stack.len();
-		let stack = Rc::new(Box::new(RunningStack::new(stack_id,10)));
-		self.active_stack.push(stack.clone());
+		let stack = Rc::new(RefCell::new(Box::new(RunningStack::new(stack_id,10))));
+		self.active_stack.push(stack);
 		self.non_instant_task_status.push(TaskStatus::Inactive);
 
 		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
@@ -657,11 +657,10 @@ impl BehaviorTree{
 			return
 		}
 	
-		if self.active_stack[stack_index].len() == 0 || self.active_stack[stack_index].peak() != task_index {
-			{
-				let stack = Rc::get_mut(&mut self.active_stack[stack_index]).unwrap();
-				stack.push(task_index);
-			}
+		if self.active_stack[stack_index].as_ref().borrow().len() == 0 || self.active_stack[stack_index].as_ref().borrow().peak() != task_index {
+			let stack = self.active_stack[stack_index].clone();
+			let mut stack = stack.borrow_mut();
+			stack.push(task_index);
 
 			self.non_instant_task_status[stack_index] = TaskStatus::Running;
 			
@@ -670,7 +669,7 @@ impl BehaviorTree{
 			let mut task = task.borrow_mut();
 			let task = task.as_mut();
 
-			let stack = &mut self.active_stack[stack_index];
+			//let stack = &mut self.active_stack[stack_index];
 			let stack_data = self.stack_id_to_stack_data[&stack.stack_id].clone();
 			let stack_data = stack_data.borrow();
 			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
@@ -773,8 +772,8 @@ impl BehaviorTree{
 				if condition_task.on_update(self) != condition_status {
 					let composite_index = conditional_reevaluate.borrow().composite_index;
 					for j in (0..self.active_stack.len()).rev(){
-						if self.active_stack[j].len() > 0{
-							let task_index = self.active_stack[j].peak();
+						if self.active_stack[j].as_ref().borrow().len() > 0{
+							let task_index = self.active_stack[j].as_ref().borrow().peak();
 							let mut task_index = task_index as i32;
 							if !self.is_parent_task(composite_index, task_index){
 								continue;
@@ -845,7 +844,8 @@ impl BehaviorTree{
 
 	fn remove_stack(&mut self, stack_index:usize) {
 		if stack_index < self.active_stack.len() {
-			let stack = &self.active_stack[stack_index];
+			let stack = self.active_stack[stack_index].clone();
+			let stack = stack.borrow();
 			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
 			let stack_data = stack_data.borrow();
 			let stack_data= stack_data.as_ref();
@@ -958,13 +958,13 @@ impl IBehaviorTree for BehaviorTree{
 				let mut task_index;
 
 				let current_stack = self.active_stack[j].clone();
-				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
-					task_index = self.active_stack[j].peak();
+				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].as_ref().borrow().len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
+					task_index = self.active_stack[j].as_ref().borrow().peak();
 					if !self.is_running{
 						break;
 					}
 
-					if self.active_stack[j].len() > 0 && start_index == (self.active_stack[j].peak() as i32){
+					if self.active_stack[j].as_ref().borrow().len() > 0 && start_index == (self.active_stack[j].as_ref().borrow().peak() as i32){
 						break;
 					}
 
