@@ -49,6 +49,7 @@ impl JsonParser{
         parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.Idle", |variables, id_2_task| -> Box<dyn IAction> {Box::new(Idle::new())});
         parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.PlayAniForSync", |variables, id_2_task| -> Box<dyn IAction> {Box::new(PlayAniForSync::new())});
         parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.RoleFollowJoystick", |variables, id_2_task| -> Box<dyn IAction> {Box::new(RoleFollowJoystick::new())});
+        parser.register_action_fn("BehaviorDesigner.Runtime.Tasks.Role.MainRole.RoleFollowJoystick", |variables, id_2_task| -> Box<dyn IAction> {Box::new(RoleFollowJoystick::new())});
 
         parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.ReturnFailure", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(ReturnFailure::new())});
         parser.register_decorator_fn("BehaviorDesigner.Runtime.Tasks.ReturnSuccess", |variables, id_2_task| -> Box<dyn IDecorator> {Box::new(ReturnSuccess::new())});
@@ -172,7 +173,7 @@ impl JsonParser{
 
     fn initialize_parent_task(&self, task_proxy:&mut Rc<RefCell<Box<dyn ITaskProxy>>>, task_add_data:&mut TaskAddData){
         let task_proxy_bak = task_proxy.clone();
-        let task_proxy = Rc::get_mut(task_proxy).unwrap();
+        //let task_proxy = task_proxy.borrow();
         
         if task_proxy.borrow().is_implements_iparenttask(){
             let old_parent = std::mem::replace(&mut task_add_data.parent, Some(Rc::downgrade(&task_proxy_bak)));
@@ -217,5 +218,92 @@ impl IParser for JsonParser{
         }
 
         Ok(root_task)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    struct DummyTaskAddData;
+    impl Default for TaskAddData {
+        fn default() -> Self {
+            TaskAddData::new()
+        }
+    }
+
+    #[test]
+    fn test_json_parser_deserialize_simple_tree() {
+        // 构建一个简单的行为树JSON，包含RootTask和一个简单的Action
+        let tree_json = json!({
+            "RootTask": {
+                "Type": "BehaviorDesigner.Runtime.Tasks.Idle",
+                "Name": "RootIdle",
+                "ID": 1
+            }
+        });
+
+        let tree_json_str = tree_json.to_string();
+        let tree_bytes = tree_json_str.as_bytes().to_vec();
+
+        let parser = JsonParser::new();
+        let mut task_add_data = TaskAddData::default();
+
+        let result = parser.borrow().deserialize(&tree_bytes, &mut task_add_data);
+
+        assert!(result.is_ok());
+        let root_task = result.unwrap();
+        let root_task = root_task.borrow();
+
+        // 检查根节点类型名称
+        assert_eq!(root_task.corresponding_type(), "BehaviorDesigner.Runtime.Tasks.Idle");
+    }
+
+    #[test]
+    fn test_json_parser_deserialize_with_conditional() {
+        // 构建一个包含Conditional节点的行为树JSON
+        let tree_json = json!({
+            "RootTask": {
+                "Type": "BehaviorDesigner.Runtime.Tasks.Role.MainRole.NeedFollowJoystick",
+                "Name": "NeedFollowJoystick",
+                "ID": 2
+            }
+        });
+
+        let tree_json_str = tree_json.to_string();
+        let tree_bytes = tree_json_str.as_bytes().to_vec();
+
+        let parser = JsonParser::new();
+        let mut task_add_data = TaskAddData::default();
+
+        let result = parser.borrow().deserialize(&tree_bytes, &mut task_add_data);
+
+        assert!(result.is_ok());
+        let root_task = result.unwrap();
+        let root_task = root_task.borrow();
+
+        assert_eq!(root_task.corresponding_type(), "BehaviorDesigner.Runtime.Tasks.Role.MainRole.NeedFollowJoystick");
+    }
+
+    #[test]
+    fn test_json_parser_deserialize_with_file() {
+        let file_path = "src/behavior_tree/test_behaviortree.json";
+        let file_content = std::fs::read_to_string(file_path).unwrap();
+        let file_bytes = file_content.as_bytes().to_vec();
+
+        let parser = JsonParser::new();
+        let mut task_add_data = TaskAddData::default();
+
+        let result = parser.borrow().deserialize(&file_bytes, &mut task_add_data);
+
+        match &result {
+            Ok(_) => (),
+            Err(e) => {
+                println!("error: {:?}", e);
+            }
+        }
+        //println!("result: {:?}", result);
+        assert!(result.is_ok());
     }
 }
