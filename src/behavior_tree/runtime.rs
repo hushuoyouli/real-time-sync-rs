@@ -702,7 +702,7 @@ impl BehaviorTree{
 			if task.is_implements_iaction() {
 				//action := task.(iface.IAction)
 				if task.is_sync_to_client() {
-					let mut sync_data_collector = task.sync_data_collector().unwrap();
+					let sync_data_collector = task.sync_data_collector().unwrap();
 					let datas = sync_data_collector.borrow_mut().get_and_clear();
 					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task, datas);
 				}
