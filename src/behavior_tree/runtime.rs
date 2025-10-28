@@ -760,7 +760,6 @@ impl BehaviorTree{
 		let  mut conditional_reevaluatees = self.conditional_reevaluate.clone();
 		let len = conditional_reevaluatees.len();
 		for i in (0..len).rev(){
-			
 			let conditional_reevaluate: &mut Rc<RefCell<Box<ConditionalReevaluate>>> = &mut conditional_reevaluatees[i];
 			if conditional_reevaluate.borrow().composite_index != -1{
 				let condition_index = conditional_reevaluate.borrow().index;
