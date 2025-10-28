@@ -21,7 +21,6 @@ pub struct TaskProxy{
 	id:i32,
 	name:String,
 	disabled:bool,
-	unit:Weak<RefCell<Box<dyn IUnit>>>,
 
 	//	IComposite专用
 	abort_type:AbortType,
@@ -32,13 +31,12 @@ pub struct TaskProxy{
 }
 
 impl TaskProxy{
-	pub fn new(corresponding_type:&str, name:&str,unit:&Weak<RefCell<Box<dyn IUnit>>>,real_task:RealTaskType) -> Self{
+	pub fn new(corresponding_type:&str, name:&str,real_task:RealTaskType) -> Self{
 		Self{
 			corresponding_type: corresponding_type.to_string(),
 			id:0,
 			name:name.to_string(),
 			disabled: false,
-			unit: unit.clone(),
 			abort_type: AbortType::None,
 			children: Vec::new(),
 			real_task:real_task,
@@ -95,11 +93,6 @@ impl ITaskProxy for TaskProxy {
 	fn set_disabled(&mut self, disabled:bool){
 		self.disabled = disabled;
 	}
-
-	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>{
-		self.unit.clone()
-	}
-
 
 	fn on_awake(&mut self, behavior_tree:&dyn IBehaviorTree){
 		let mut real_task =std::mem::replace(&mut self.real_task, RealTaskType::Action(Box::new(EmptyAction)));
@@ -545,7 +538,7 @@ impl BehaviorTree{
 
 		let root_task = self.parser.deserialize(&self.config, &self.unit.clone(), &task_add_data)?;
 		let entry_root = EntryRoot::new();
-		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", &self.unit, RealTaskType::Decorator(entry_root));
+		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", RealTaskType::Decorator(entry_root));
 		root_proxy.add_child(&root_task);
 				
 		self.root_task = Some(Rc::new(RefCell::new(Box::new(root_proxy))));

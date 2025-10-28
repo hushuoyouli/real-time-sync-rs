@@ -80,7 +80,7 @@ impl JsonParser{
             None => "",
         };
 
-        let mut task_proxy: TaskProxy =TaskProxy::new(corresponding_type, name, unit, real_task);
+        let mut task_proxy: TaskProxy =TaskProxy::new(corresponding_type, name, real_task);
 
         for (key, value) in task_json.as_object().unwrap().iter() {
             match key.as_str() {

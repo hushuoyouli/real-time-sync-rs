@@ -167,7 +167,6 @@ pub trait ITaskProxy{
 	fn disabled(&self)->bool;
 	fn set_disabled(&mut self, disabled:bool);
 
-	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>;
 	fn on_awake(&mut self, behavior_tree:&dyn IBehaviorTree);
     fn on_start(&mut self, behavior_tree:&dyn IBehaviorTree);
     fn on_end(&mut self, behavior_tree:&dyn IBehaviorTree);
