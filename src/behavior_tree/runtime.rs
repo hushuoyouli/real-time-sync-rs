@@ -465,7 +465,7 @@ pub struct BehaviorTree{
 	root_task:Option<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	clock:Weak<RefCell<Box<dyn IClock>>>,                            
 	stack_id:usize,
-    stack_id_to_stack_data:HashMap<usize, Rc<RefCell<Box<StackRuntimeData>>>>,
+    stack_id_to_stack_data:HashMap<usize, Box<StackRuntimeData>>,
 
 	task_datas:HashMap<i32, TaskRuntimeData>,
 
@@ -626,7 +626,7 @@ impl BehaviorTree{
 		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
 		self.runtime_event_handle.new_stack(self, &stack_data);
-		self.stack_id_to_stack_data.insert(stack_id, Rc::new(RefCell::new(Box::new(stack_data))));
+		self.stack_id_to_stack_data.insert(stack_id, Box::new(stack_data));
 		return stack_index;
 	}
 
@@ -670,8 +670,7 @@ impl BehaviorTree{
 			let task = task.as_mut();
 
 			//let stack = &mut self.active_stack[stack_index];
-			let stack_data = self.stack_id_to_stack_data[&stack.stack_id].clone();
-			let stack_data = stack_data.borrow();
+			let stack_data  = self.stack_id_to_stack_data[&stack.stack_id].as_ref().clone();
 			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			let task_execute_id= self.next_task_execute_id();
 	
@@ -679,12 +678,12 @@ impl BehaviorTree{
 			self.task_datas.insert(task.id(), task_runtime_data);
 	
 			//	TODO:这里需要截获初始化的数据？
-			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
+			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
 
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
 			if task.is_implements_iparenttask() {
 				if task.can_run_parallel_children() {
-					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task);
+					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
 				}
 			}
 	
@@ -703,7 +702,7 @@ impl BehaviorTree{
 				if task.is_sync_to_client() {
 					let sync_data_collector = task.sync_data_collector().unwrap();
 					let datas = sync_data_collector.borrow_mut().get_and_clear();
-					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), stack_data.as_ref(), task, datas);
+					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task, datas);
 				}
 			}
 	
@@ -846,17 +845,16 @@ impl BehaviorTree{
 		if stack_index < self.active_stack.len() {
 			let stack = self.active_stack[stack_index].clone();
 			let stack = stack.borrow();
-			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-			let stack_data = stack_data.borrow();
-			let stack_data= stack_data.as_ref();
+			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
+
 
 			let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
 				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
 				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap();
-				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap().clone();
+				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap();
 				let task = self.task_list[task_runtime_data.task_id as usize].clone().upgrade().unwrap();
-				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data.borrow().as_ref(), task.borrow().as_ref(), &stack_data, now_timestamp);
+				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data.as_ref(), task.borrow().as_ref(), &stack_data, now_timestamp);
 				
 				self.stack_id_to_parallel_task_id.remove(&(stack_data.stack_id as u32));
                 let old_parallel_task_id_to_stack_ids = self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clone();

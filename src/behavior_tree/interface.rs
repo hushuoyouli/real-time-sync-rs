@@ -9,6 +9,7 @@ pub trait IClock{
 	fn timestamp_in_mill(&self)->u64;
 }
 
+#[derive(Clone)]
 pub struct StackRuntimeData{
 	pub stack_id:usize,
 	pub start_time:u64,
