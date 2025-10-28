@@ -77,19 +77,17 @@ pub struct TaskAddData{
 	pub parent_index:i32,
 	pub depth:u32,
 	pub composite_parent_index:u32,
-	pub unit:Weak<RefCell<Box<dyn IUnit>>>,
 	pub error_task:i32,
 	pub error_task_name:String,
 }
 
 impl TaskAddData{
-	pub fn new(unit:&Weak<RefCell<Box<dyn IUnit>>>) -> Self{
+	pub fn new() -> Self{
 		Self{
 			parent:None,
 			parent_index:-1,
 			depth:0,
 			composite_parent_index:0,
-			unit:unit.clone(),
 			error_task:-1,
 			error_task_name:"".to_string(),
 		}
@@ -97,7 +95,7 @@ impl TaskAddData{
 }
 
 pub trait IParser{
-	fn deserialize(&self, config:&Vec<u8>, unit:&Weak<RefCell<Box<dyn IUnit>>>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>;
+	fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>;
 }
 
 
@@ -109,7 +107,7 @@ pub trait IBehaviorTree{
 	fn update(&mut self);
 	fn is_runnning(&self)->bool;
 
-	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>;
+	fn unit_id(&self)->u64;
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector);
 	fn clock(&self)->Weak<RefCell<Box<dyn IClock>>>;
 }

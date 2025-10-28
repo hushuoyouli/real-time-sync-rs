@@ -334,7 +334,7 @@ impl ITaskProxy for TaskProxy {
 	}
 
 	fn abort_type(&self)->AbortType{
-		self.abort_type
+		self.abort_type.clone()
 	}
 	
 	fn set_abort_type(&mut self, abort_type:AbortType){
@@ -461,7 +461,6 @@ pub struct BehaviorTree{
 	initialize_first_stack_and_first_task:bool, //	是否需要初始化第一个执行栈和第一个任务
 	execution_status:TaskStatus,
 	config:Vec<u8>,
-	unit:Weak<RefCell<Box<dyn IUnit>>>,
 	root_task:Option<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	clock:Weak<RefCell<Box<dyn IClock>>>,                            
 	stack_id:usize,
@@ -477,12 +476,13 @@ pub struct BehaviorTree{
     
 	parser:Rc<Box<dyn IParser>>,
 	task_execute_id:u32,
+	unit_id:u64,
 }
 
 
 #[allow(unused_variables)]
 impl BehaviorTree{
-	pub fn new(id: u64, config:&Vec<u8>,	unit:&Weak<RefCell<Box<dyn IUnit>>>,  clock:&Weak<RefCell<Box<dyn IClock>>>, 
+	pub fn new(id: u64, config:&Vec<u8>,	unit_id:u64,  clock:&Weak<RefCell<Box<dyn IClock>>>, 
 		runtime_event_handle:Box<dyn IRuntimeEventHandle>,parser:Rc<Box<dyn IParser>>) -> Rc<RefCell<Box<dyn IBehaviorTree>>>{
 		let behavior_tree = Self{
 			id,
@@ -500,7 +500,7 @@ impl BehaviorTree{
 			initialize_first_stack_and_first_task: false,
 			execution_status: TaskStatus::Inactive,
 			config: config.clone(),
-			unit:unit.clone(),
+			unit_id:unit_id,
 			root_task:None,
 			clock:clock.clone(),
 			stack_id: 0,
@@ -528,9 +528,9 @@ impl BehaviorTree{
 		self.parent_composite_index.clear();
 		self.child_conditional_index.clear();
 		self.root_task = None;
-		let task_add_data: TaskAddData = TaskAddData::new(&self.unit);
+		let task_add_data: TaskAddData = TaskAddData::new();
 
-		let root_task = self.parser.deserialize(&self.config, &self.unit.clone(), &task_add_data)?;
+		let root_task = self.parser.deserialize(&self.config, &task_add_data)?;
 		let entry_root = EntryRoot::new();
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", RealTaskType::Decorator(entry_root));
 		root_proxy.add_child(&root_task);
@@ -977,8 +977,8 @@ impl IBehaviorTree for BehaviorTree{
 		self.is_running
 	}
 
-	fn unit(&self)->Weak<RefCell<Box<dyn IUnit>>>{
-		self.unit.clone()
+	fn unit_id(&self)-> u64{
+		self.unit_id
 	}
 
 	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector){

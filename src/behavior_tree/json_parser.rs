@@ -58,7 +58,7 @@ impl JsonParser{
         Err(format!("generate_real_task not implemented for corresponding_type: {}", corresponding_type).into())
     }
 
-    fn generate_task_proxy(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+    fn generate_task_proxy(&self, task_json:&serde_json::Value, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
         let corresponding_type = task_json["Type"].as_str().unwrap();
 
         let mut variables:HashMap<String, serde_json::Value> = HashMap::new();
@@ -120,7 +120,7 @@ impl JsonParser{
         match task_json["Children"].as_array(){
             Some(children) => 
             for child in children.iter(){
-                let child = self.generate_task_proxy(child, unit, id_2_task, all_tasks)?;
+                let child = self.generate_task_proxy(child, id_2_task, all_tasks)?;
                 task_proxy.borrow_mut().add_child(&child);
                 //Rc::get_mut(&mut task_proxy).unwrap().add_child(&child);
             },
@@ -130,8 +130,8 @@ impl JsonParser{
         Ok(task_proxy)
     }
 
-    fn initialize_task(&self, task_json:&serde_json::Value, unit:&Weak<RefCell<Box<dyn IUnit>>>, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
-        self.generate_task_proxy(task_json, unit, id_2_task, all_tasks)
+    fn initialize_task(&self, task_json:&serde_json::Value, id_2_task:&Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>, all_tasks:&mut Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+        self.generate_task_proxy(task_json, id_2_task, all_tasks)
     }
 
     fn initialize_parent_task(&self, task_proxy:&mut Rc<RefCell<Box<dyn ITaskProxy>>>, task_add_data:&mut TaskAddData){
@@ -152,18 +152,18 @@ impl JsonParser{
 }
 
 impl IParser for JsonParser{
-    fn deserialize(&self, config:&Vec<u8>, unit:&Weak<RefCell<Box<dyn IUnit>>>,task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
+    fn deserialize(&self, config:&Vec<u8>, task_add_data:&TaskAddData) -> Result<Rc<RefCell<Box<dyn ITaskProxy>>>, Box<dyn std::error::Error>>{
         let json: serde_json::Value = from_str(std::str::from_utf8(config)?).unwrap();
         let root_task_json: &serde_json::Value = json.get("RootTask").ok_or("json文件缺少RootTask的配置")?;
         let mut all_tasks:Vec<Weak<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
         let id_2_task = Rc::new(RefCell::new(Box::new(HashMap::new())));
-        let root_task = self.initialize_task(root_task_json, unit, &id_2_task,&mut all_tasks)?;
+        let root_task = self.initialize_task(root_task_json, &id_2_task,&mut all_tasks)?;
 
         let mut detached_tasks:Vec<Rc<RefCell<Box<dyn ITaskProxy>>>> = Vec::new();
         if let Some(_) = json.get("DetachedTasksConfigs"){
             let detached_tasks_configs = json.get("DetachedTasksConfigs").unwrap().as_array().unwrap();
             for detached_task_config in detached_tasks_configs.iter(){
-                let detached_task = self.initialize_task(detached_task_config, unit, &id_2_task,&mut all_tasks)?;
+                let detached_task = self.initialize_task(detached_task_config, &id_2_task,&mut all_tasks)?;
                 detached_tasks.push(detached_task);
             }
         }

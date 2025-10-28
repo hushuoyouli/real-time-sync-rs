@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum TaskStatus{
     Inactive,
 	Running,
@@ -17,7 +17,7 @@ impl TaskStatus {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum AbortType {
     None,
 	Self_,
