@@ -987,8 +987,8 @@ impl BehaviorTree{
 				if task.can_run_parallel_children(){
 					let child_stack_index = self.add_stack();
 					let child_stack = self.active_stack[child_stack_index].clone();
-					let child_stack = child_stack.borrow_mut();
-					let child_stack = child_stack.as_ref();
+					let mut child_stack = child_stack.borrow_mut();
+					let child_stack = child_stack.as_mut();
 
 					self.stack_id_to_parallel_task_id.insert(child_stack.stack_id as u32, task.id() as u32);
 					self.parallel_task_id_to_stack_ids.get_mut(&(task.id() as i32)).unwrap().push(child_stack.stack_id as u32);
@@ -997,11 +997,19 @@ impl BehaviorTree{
 					let child_stack_data = child_stack_data.borrow();
 					let child_stack_data = child_stack_data.as_ref();
 					self.runtime_event_handle.parallel_add_child_stack(self, task_runtime_data, stack_data, task, child_stack_data);
+					task.on_child_started1(child_index, self);
+
+					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
+					let mut child_task = child_task.borrow_mut();
+					let child_task = child_task.as_mut();
+
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, child_stack_index, status,  child_stack, child_stack_data, child_task, task_runtime_data);
+					status = child_status.clone();
 				}else{
 					task.on_child_started0(self);
 					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
 					let mut child_task = child_task.borrow_mut();
-					child_status = self.run_task(child_index, stack_index, child_status,  stack, stack_data, child_task.as_mut(), task_runtime_data);
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, stack_index, child_status,  stack, stack_data, child_task.as_mut(), task_runtime_data);
 					status = child_status.clone();
 				}
 			}
@@ -1108,7 +1116,7 @@ impl IBehaviorTree for BehaviorTree{
 					let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
 					let task_runtime_data = task_runtime_data.borrow();
 					let task_runtime_data = task_runtime_data.as_ref();
-					
+
 					status = self.run_task(task_index, j, status, stack, stack_data, task, task_runtime_data);
 				}
 			}
