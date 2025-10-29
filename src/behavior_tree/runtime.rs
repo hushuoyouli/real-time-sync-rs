@@ -669,7 +669,7 @@ impl BehaviorTree{
 	
 		if stack.len() == 0 || stack.peak() != task_index {
 			stack.push(task_index);
-			
+
 			self.non_instant_task_status[stack_index] = TaskStatus::Running;
 			
 			let task = &mut self.task_list.get(task_index as usize).unwrap();
