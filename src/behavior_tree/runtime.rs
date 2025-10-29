@@ -756,7 +756,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy)->TaskStatus{
+	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack)->TaskStatus{
 		status
 	}
 
@@ -792,7 +792,9 @@ impl BehaviorTree{
 								let task = &mut self.task_list[task_index as usize].upgrade().unwrap();
 								let mut task = task.borrow_mut();
 								let task = task.as_mut();
-								self.pop_task(task_index, j, status, false,  task);
+								let stack = self.active_stack[j].clone();
+								let mut stack = stack.borrow_mut();
+								self.pop_task(task_index, j, status, false,  task, stack.as_mut());
 								task_index = self.parent_index[task_index as usize];
 							}
 
@@ -937,13 +939,9 @@ impl BehaviorTree{
 		let mut status: TaskStatus = previous_status;
 		if task.instant() && (self.non_instant_task_status[stack_index] == TaskStatus::Success || self.non_instant_task_status[stack_index] == TaskStatus::Failure){
 			status = self.non_instant_task_status[stack_index].clone();
-			status = self.pop_task(task_index as i32, stack_index, status, true, task);
+			status = self.pop_task(task_index as i32, stack_index, status, true, task, stack);
 			return status;
 		}
-
-/* 		let stack = self.active_stack[stack_index].clone();
-		let mut stack = stack.borrow_mut();
-		let stack = stack.as_mut(); */
 
 		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
@@ -962,8 +960,6 @@ impl BehaviorTree{
 		}
 
 		let task_runtime_data = self.task_datas.get(&task.id()).unwrap();
-		let stack = self.active_stack[stack_index].clone();
-		let stack = stack.borrow();
 		let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
 		let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		self.runtime_event_handle.post_on_update(self, task_runtime_data, stack_runtime_data, task,now_timestamp, status.clone());
@@ -977,7 +973,7 @@ impl BehaviorTree{
 
 		if status != TaskStatus::Running{
 			if task.instant(){
-				status = self.pop_task(task_index as i32, stack_index, status, true, task);
+				status = self.pop_task(task_index as i32, stack_index, status, true, task, stack);
 			}else{
 				self.non_instant_task_status[stack_index] = status.clone();
 				status = TaskStatus::Running;
