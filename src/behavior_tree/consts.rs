@@ -17,7 +17,7 @@ impl TaskStatus {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Copy)]
 pub enum AbortType {
     None,
 	Self_,

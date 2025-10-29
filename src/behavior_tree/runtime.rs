@@ -456,6 +456,7 @@ pub struct BehaviorTree{
     id: u64,
 
     task_list: Vec<Weak<RefCell<Box<dyn ITaskProxy>>>>,
+	composite_abort_task:Vec<AbortType>,
     parent_index:Vec<i32>,
 
     children_index :Vec<Vec<i32>>,
@@ -551,8 +552,10 @@ impl BehaviorTree{
 		let mut root_proxy = TaskProxy::new("EntryRoot", "EntryRoot", RealTaskType::Decorator(entry_root));
 		root_proxy.add_child(&root_task);
 				
+	
 		self.root_task = Some(Rc::new(RefCell::new(Box::new(root_proxy))));
 		self.task_list.push(Rc::downgrade(&self.root_task.clone().unwrap()));
+		self.composite_abort_task.push(AbortType::None);
 		self.parent_index.push(-1);
 		self.parent_composite_index.push(-1);
 		self.child_conditional_index.push(Vec::with_capacity(10));
@@ -585,6 +588,7 @@ impl BehaviorTree{
 
 		self.children_index[parent_index as usize].push(index);
 		self.relative_child_index.push(self.children_index[parent_index as usize].len() as i32 - 1);
+		self.composite_abort_task.push(child_task.borrow().abort_type());
 		self.task_list.push(Rc::downgrade(child_task));
 		self.parent_index.push(parent_task.borrow().id());
 		self.parent_composite_index.push(parent_composite_index);
@@ -762,7 +766,7 @@ impl BehaviorTree{
 
 	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, 
 				pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, 
-				stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>, mut composite_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+				stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
 		if self.is_running{
 			return status;
 		}
@@ -852,7 +856,9 @@ impl BehaviorTree{
 		}
 
 		if pop_children{
-
+			for i in (stack_index..self.active_stack.len()).rev(){
+				
+			}
 		}
 
 
