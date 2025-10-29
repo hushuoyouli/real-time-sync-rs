@@ -898,15 +898,10 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, mut stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
-
-		let task = self.task_list[task_index as usize].upgrade().unwrap();
-		let mut task = task.borrow_mut();
-		let task = task.as_mut();
-		//let task = task.as_mut();
 
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
@@ -945,7 +940,7 @@ impl BehaviorTree{
 
 		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
-			(status, stack_index) = self.run_parent_task(task_index, stack_index, status, task, stack);
+			status = self.run_parent_task(task_index, stack_index, status, task, stack);
 			status = task.override_status1(status, self);
 		}else{
 			if task.is_implements_iaction(){
@@ -983,8 +978,30 @@ impl BehaviorTree{
 		return status;
 	}
 
-	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> (TaskStatus, usize){
-		(status, stack_index)
+	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> TaskStatus{
+		if !task.can_run_parallel_children() || task.override_status1(TaskStatus::Running, self) != TaskStatus::Running{
+			let mut child_status = TaskStatus::Inactive;
+			let parent_stack = stack_index;
+			let parent_stack_runtime_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
+			let task_runtime_data = self.task_datas.get(&task.id()).unwrap();
+			let children_indexs = self.children_index[task_index as usize].clone();
+
+			while task.can_execute(self) &&(child_status != TaskStatus::Running||task.can_run_parallel_children())&&self.is_running{
+				let child_index = task.current_child_index(self);
+				if task.can_run_parallel_children(){
+
+				}else{
+					task.on_child_started0(self);
+					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
+					let mut child_task = child_task.borrow_mut();
+					child_status = self.run_task(child_index, stack_index, child_status,  stack, child_task.as_mut());
+					status = child_status.clone();
+				}
+			}
+
+		}
+
+		status
 	}
 
 	/* func (p *BehaviorTree) RunTask(taskIndex, stackIndex int, previousStatus iface.TaskStatus) iface.TaskStatus { */
