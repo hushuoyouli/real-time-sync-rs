@@ -945,7 +945,7 @@ impl BehaviorTree{
 
 		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
-			(status, stack_index) = self.run_parent_task(task_index, stack_index, status, task);
+			(status, stack_index) = self.run_parent_task(task_index, stack_index, status, task, stack);
 			status = task.override_status1(status, self);
 		}else{
 			if task.is_implements_iaction(){
@@ -983,7 +983,7 @@ impl BehaviorTree{
 		return status;
 	}
 
-	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, status:TaskStatus, task:&mut dyn ITaskProxy) -> (TaskStatus, usize){
+	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> (TaskStatus, usize){
 		(status, stack_index)
 	}
 
