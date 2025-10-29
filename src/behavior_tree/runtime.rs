@@ -796,18 +796,10 @@ impl BehaviorTree{
 			if task.is_implements_iconditional(){
 				let composite_parent_index = self.parent_composite_index[task_index as usize];
 				if composite_parent_index != -1{
-					let composite_task = if composite_parent_index == parent_index{
-						parent_task_ref
-					}else{
-						match &mut composite_task{
-							Some(composite_task_ref) => composite_task_ref,
-							None => parent_task_ref,
-						}
-					};
-
-					if composite_task.abort_type() != AbortType::None{
+					let composite_abort_type = self.composite_abort_task[composite_parent_index as usize];
+					if composite_abort_type != AbortType::None{
 						let mut composite = -1;
-						if composite_task.abort_type() != AbortType::LowerPriority{
+						if composite_abort_type != AbortType::LowerPriority{
 							composite = composite_parent_index;
 						}
 
