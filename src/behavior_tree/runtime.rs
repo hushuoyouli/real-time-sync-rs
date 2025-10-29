@@ -662,16 +662,14 @@ impl BehaviorTree{
 		task_execute_id
 	}
 
-	fn push_task(&mut self, stack_index:usize, task_index:u32){
+	fn push_task(&mut self, stack_index:usize, task_index:u32, stack:&mut RunningStack){
 		if !self.is_running || stack_index >= self.active_stack.len() {
 			return
 		}
 	
-		if self.active_stack[stack_index].as_ref().borrow().len() == 0 || self.active_stack[stack_index].as_ref().borrow().peak() != task_index {
-			let stack = self.active_stack[stack_index].clone();
-			let mut stack = stack.borrow_mut();
+		if stack.len() == 0 || stack.peak() != task_index {
 			stack.push(task_index);
-
+			
 			self.non_instant_task_status[stack_index] = TaskStatus::Running;
 			
 			let task = &mut self.task_list.get(task_index as usize).unwrap();
@@ -943,7 +941,11 @@ impl BehaviorTree{
 			return status;
 		}
 
-		self.push_task(stack_index, task_index);
+		let stack = self.active_stack[stack_index].clone();
+		let mut stack = stack.borrow_mut();
+		let stack = stack.as_mut();
+
+		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
 			(status, stack_index) = self.run_parent_task(task_index, stack_index, status, task);
 			status = task.override_status1(status, self);
@@ -1043,7 +1045,10 @@ impl IBehaviorTree for BehaviorTree{
 		if self.is_running{
 			if self.initialize_first_stack_and_first_task{
 				self.add_stack();
-				self.push_task(0,0);
+				let stack = self.active_stack[0].clone();
+				let mut stack = stack.borrow_mut();
+				let stack = stack.as_mut();
+				self.push_task(0,0, stack);
 				self.initialize_first_stack_and_first_task = false;
 			}
 
