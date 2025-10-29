@@ -758,8 +758,8 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool){
-
+	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy)->TaskStatus{
+		status
 	}
 
 	fn reevaluate_conditional_tasks(&mut self){
@@ -791,7 +791,10 @@ impl BehaviorTree{
 							let stack_count = self.active_stack.len();
 							while task_index != -1 && task_index != composite_index && self.active_stack.len() == stack_count {
 								let status = TaskStatus::Failure;
-								self.pop_task(task_index, j, status, false);
+								let task = &mut self.task_list[task_index as usize].upgrade().unwrap();
+								let mut task = task.borrow_mut();
+								let task = task.as_mut();
+								self.pop_task(task_index, j, status, false,  task);
 								task_index = self.parent_index[task_index as usize];
 							}
 
@@ -895,13 +898,15 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, mut stack_index:usize, previous_status:TaskStatus) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
 
 		let task = self.task_list[task_index as usize].upgrade().unwrap();
-		let task = task.borrow_mut();
+		let mut task = task.borrow_mut();
+		let task = task.as_mut();
+		//let task = task.as_mut();
 
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
@@ -911,13 +916,77 @@ impl BehaviorTree{
 			
 				if !parent_task.can_run_parallel_children(){
 					parent_task.on_child_executed1(TaskStatus::Inactive, self);
+				}else{
+					parent_task.on_child_executed2(self.relative_child_index[task_index as usize] as u32, TaskStatus::Inactive, self);
 				}
+			}
+
+			let mut status = TaskStatus::Success;
+			if self.active_stack[stack_index].borrow().len() == 0{
+				if stack_index == 0{
+					self.remove_stack(stack_index);
+					let _ =  self.disable();
+					self.execution_status = status;
+					status = TaskStatus::Inactive;
+				}else{
+					self.remove_stack(stack_index);
+				}
+			}
+
+			return status;
+		}
+
+		let mut status: TaskStatus = previous_status;
+		if task.instant() && (self.non_instant_task_status[stack_index] == TaskStatus::Success || self.non_instant_task_status[stack_index] == TaskStatus::Failure){
+			status = self.non_instant_task_status[stack_index].clone();
+			status = self.pop_task(task_index as i32, stack_index, status, true, task);
+			return status;
+		}
+
+		self.push_task(stack_index, task_index);
+		if task.is_implements_iparenttask(){
+			(status, stack_index) = self.run_parent_task(task_index, stack_index, status, task);
+			status = task.override_status1(status, self);
+		}else{
+			if task.is_implements_iaction(){
+				if task.is_sync_to_client(){
+					if task.is_sync_to_client(){
+						task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+					}
+				}
+			}
+
+			status = task.on_update(self);
+		}
+
+		let task_runtime_data = self.task_datas.get(&task.id()).unwrap();
+		let stack = self.active_stack[stack_index].clone();
+		let stack = stack.borrow();
+		let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
+		let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
+		self.runtime_event_handle.post_on_update(self, task_runtime_data, stack_runtime_data, task,now_timestamp, status.clone());
+
+		if task.is_implements_iaction(){
+			if task.is_sync_to_client(){
+				let datas = task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+				self.runtime_event_handle.action_post_on_update(self, task_runtime_data, stack_runtime_data, task,now_timestamp, status.clone(), datas);
 			}
 		}
 
-		//let task = (&self.task_list[task_index as usize]).upgrade().unwrap().borrow();
+		if status != TaskStatus::Running{
+			if task.instant(){
+				status = self.pop_task(task_index as i32, stack_index, status, true, task);
+			}else{
+				self.non_instant_task_status[stack_index] = status.clone();
+				status = TaskStatus::Running;
+			}
+		}
 
-		todo!("run_task");		
+		return status;
+	}
+
+	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, status:TaskStatus, task:&mut dyn ITaskProxy) -> (TaskStatus, usize){
+		(status, stack_index)
 	}
 
 	/* func (p *BehaviorTree) RunTask(taskIndex, stackIndex int, previousStatus iface.TaskStatus) iface.TaskStatus { */
