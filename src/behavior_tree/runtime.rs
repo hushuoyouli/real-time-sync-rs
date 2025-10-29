@@ -403,6 +403,12 @@ impl ConditionalReevaluate{
 			composite_index,
 		}
 	}
+
+	pub fn initialize(&mut self, index:i32, task_status:TaskStatus, composite_index:i32){
+		self.index = index;
+		self.task_status = task_status;
+		self.composite_index = composite_index;
+	}
 }
 
 struct EntryRoot{
@@ -754,7 +760,79 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData)->TaskStatus{
+	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, 
+				pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, 
+				stack_data: &StackRuntimeData, parent_task:Option<&'a mut dyn ITaskProxy>, composite_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+		if self.is_running{
+			return status;
+		}
+
+		if stack_index >= self.active_stack.len(){
+			return status;
+		}
+
+		if self.active_stack[stack_index].borrow().len() == 0||self.active_stack[stack_index].borrow().peak()!= task_index as u32{
+			return status;
+		}
+
+		self.active_stack[stack_index].borrow_mut().pop();
+		self.non_instant_task_status[stack_index] = TaskStatus::Inactive;
+
+		if task.is_implements_iaction(){
+			if task.is_sync_to_client(){
+				task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+			}
+		}
+
+		task.on_end(self);
+
+		
+		if let Some(parent_task_ref) = &parent_task{
+			let parent_index = self.parent_index[task_index as usize];
+			if task.is_implements_iconditional(){
+				let composite_parent_index = self.parent_composite_index[task_index as usize];
+				if composite_parent_index != -1{
+					let composite_task = if composite_parent_index == parent_index{
+						parent_task_ref
+					}else{
+						match &composite_task{
+							Some(composite_task_ref) => composite_task_ref,
+							None => parent_task_ref,
+						}
+					};
+
+					if composite_task.abort_type() != AbortType::None{
+						let mut composite = -1;
+						if composite_task.abort_type() != AbortType::LowerPriority{
+							composite = composite_parent_index;
+						}
+
+						match self.conditional_reevaluate_map.get(&task_index){
+							Some(conditional_reevaluate) => {
+								conditional_reevaluate.borrow_mut().initialize(task_index, status.clone(), composite);
+								()
+							},
+							None => {
+								let conditional_reevaluate = Rc::new(RefCell::new(Box::new(ConditionalReevaluate::new(task_index, status.clone(), composite))));
+								self.conditional_reevaluate_map.insert(task_index, conditional_reevaluate.clone());
+								self.conditional_reevaluate.push(conditional_reevaluate.clone());
+								()
+							},
+						}
+					}
+
+				}
+			}
+
+			if !parent_task_ref.can_run_parallel_children(){
+				parent_task_ref.on_child_executed1(status.clone(), self);
+			}
+		}
+
+
+
+
+
 		status
 	}
 
