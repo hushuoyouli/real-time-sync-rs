@@ -840,7 +840,7 @@ impl BehaviorTree{
 					if self.parent_composite_index[task_index as usize] == -1{
 						self.remove_child_conditional_reevaluate(task_index);
 					}else{
-						let mut conditional_reevaluates = self.conditional_reevaluate.clone();
+						let conditional_reevaluates = self.conditional_reevaluate.clone();
 						for conditional_reevaluate in conditional_reevaluates{
 							if self.is_parent_task(task_index, conditional_reevaluate.borrow().index){
 								conditional_reevaluate.borrow_mut().composite_index = self.parent_composite_index[task_index as usize];
@@ -849,6 +849,10 @@ impl BehaviorTree{
 					}
 				}
 			}
+		}
+
+		if pop_children{
+
 		}
 
 
