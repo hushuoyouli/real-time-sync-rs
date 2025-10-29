@@ -760,9 +760,9 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, 
+	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, 
 				pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, 
-				stack_data: &StackRuntimeData, parent_task:Option<&'a mut dyn ITaskProxy>, composite_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+				stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>, mut composite_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
 		if self.is_running{
 			return status;
 		}
@@ -787,7 +787,7 @@ impl BehaviorTree{
 		task.on_end(self);
 
 		
-		if let Some(parent_task_ref) = &parent_task{
+		if let Some(parent_task_ref) = &mut parent_task{
 			let parent_index = self.parent_index[task_index as usize];
 			if task.is_implements_iconditional(){
 				let composite_parent_index = self.parent_composite_index[task_index as usize];
@@ -795,7 +795,7 @@ impl BehaviorTree{
 					let composite_task = if composite_parent_index == parent_index{
 						parent_task_ref
 					}else{
-						match &composite_task{
+						match &mut composite_task{
 							Some(composite_task_ref) => composite_task_ref,
 							None => parent_task_ref,
 						}
@@ -824,12 +824,32 @@ impl BehaviorTree{
 				}
 			}
 
-			if !parent_task_ref.can_run_parallel_children(){
-				parent_task_ref.on_child_executed1(status.clone(), self);
+			if !parent_task.as_ref().unwrap().can_run_parallel_children(){
+				parent_task.as_mut().unwrap().on_child_executed1(status.clone(), self);
+				status = parent_task.as_mut().unwrap().decorate(status, self);
+			}else{
+				parent_task.as_mut().unwrap().on_child_executed2(self.relative_child_index[task_index as usize] as u32, status.clone(), self);
 			}
 		}
 
-
+		if task.is_implements_iparenttask(){
+			if task.is_implements_icomposite(){
+				if task.abort_type() != AbortType::Self_|| task.abort_type() != AbortType::None{
+					self.remove_child_conditional_reevaluate(task_index);
+				}else if task.abort_type() != AbortType::LowerPriority|| task.abort_type() != AbortType::Both{
+					if self.parent_composite_index[task_index as usize] == -1{
+						self.remove_child_conditional_reevaluate(task_index);
+					}else{
+						let mut conditional_reevaluates = self.conditional_reevaluate.clone();
+						for conditional_reevaluate in conditional_reevaluates{
+							if self.is_parent_task(task_index, conditional_reevaluate.borrow().index){
+								conditional_reevaluate.borrow_mut().composite_index = self.parent_composite_index[task_index as usize];
+							}
+						}
+					}
+				}
+			}
+		}
 
 
 
