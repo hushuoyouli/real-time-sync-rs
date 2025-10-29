@@ -470,9 +470,9 @@ pub struct BehaviorTree{
 	root_task:Option<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	clock:Weak<RefCell<Box<dyn IClock>>>,                            
 	stack_id:usize,
-    stack_id_to_stack_data:HashMap<usize, Box<StackRuntimeData>>,
+    stack_id_to_stack_data:HashMap<usize, Rc<RefCell<Box<StackRuntimeData>>>>,
 
-	task_datas:HashMap<i32, TaskRuntimeData>,
+	task_datas:HashMap<i32, Rc<RefCell<Box<TaskRuntimeData>>>>,
 
 	stack_id_to_parallel_task_id:HashMap<u32, u32>,
 	parallel_task_id_to_stack_ids:HashMap<i32, Vec<u32>>,
@@ -636,7 +636,7 @@ impl BehaviorTree{
 		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
 		self.runtime_event_handle.new_stack(self, &stack_data);
-		self.stack_id_to_stack_data.insert(stack_id, Box::new(stack_data));
+		self.stack_id_to_stack_data.insert(stack_id, Rc::new(RefCell::new(Box::new(stack_data))));
 		return stack_index;
 	}
 
@@ -662,7 +662,7 @@ impl BehaviorTree{
 		task_execute_id
 	}
 
-	fn push_task(&mut self, stack_index:usize, task_index:u32, stack:&mut RunningStack){
+	fn push_task(&mut self, stack_index:usize, task_index:u32, stack:&mut RunningStack, stack_data: &StackRuntimeData){
 		if !self.is_running || stack_index >= self.active_stack.len() {
 			return
 		}
@@ -677,21 +677,19 @@ impl BehaviorTree{
 			let mut task = task.borrow_mut();
 			let task = task.as_mut();
 
-			//let stack = &mut self.active_stack[stack_index];
-			let stack_data  = self.stack_id_to_stack_data[&stack.stack_id].as_ref().clone();
 			let now_timestamp= self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			let task_execute_id= self.next_task_execute_id();
 	
 			let task_runtime_data= TaskRuntimeData::new(task.id(), now_timestamp, task_execute_id, stack_data.stack_id);
-			self.task_datas.insert(task.id(), task_runtime_data);
+			self.task_datas.insert(task.id(), Rc::new(RefCell::new(Box::new(task_runtime_data))));
 	
 			//	TODO:这里需要截获初始化的数据？
-			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task);
 
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
 			if task.is_implements_iparenttask() {
 				if task.can_run_parallel_children() {
-					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task);
+					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task);
 				}
 			}
 	
@@ -710,7 +708,7 @@ impl BehaviorTree{
 				if task.is_sync_to_client() {
 					let sync_data_collector = task.sync_data_collector().unwrap();
 					let datas = sync_data_collector.borrow_mut().get_and_clear();
-					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap(), &stack_data, task, datas);
+					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task, datas);
 				}
 			}
 	
@@ -756,7 +754,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack)->TaskStatus{
+	fn pop_task(&mut self, task_index:i32, stack_index:usize, status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData)->TaskStatus{
 		status
 	}
 
@@ -794,7 +792,10 @@ impl BehaviorTree{
 								let task = task.as_mut();
 								let stack = self.active_stack[j].clone();
 								let mut stack = stack.borrow_mut();
-								self.pop_task(task_index, j, status, false,  task, stack.as_mut());
+								let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+								let stack_data = stack_data.borrow();
+								let stack_data = stack_data.as_ref();
+								self.pop_task(task_index, j, status, false,  task, stack.as_mut(), stack_data);
 								task_index = self.parent_index[task_index as usize];
 							}
 
@@ -854,18 +855,17 @@ impl BehaviorTree{
 		}
 	}
 
-	fn remove_stack(&mut self, stack_index:usize, stack:&mut RunningStack) {
+	fn remove_stack(&mut self, stack_index:usize, stack:&mut RunningStack,stack_data: &StackRuntimeData) {
 		if stack_index < self.active_stack.len() {
-/* 			let stack = self.active_stack[stack_index].clone();
-			let stack = stack.borrow(); */
-			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
-
-
 			let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
 				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
-				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap();
+				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap().clone();
+				let task_runtime_data = task_runtime_data.borrow();
+				let task_runtime_data = task_runtime_data.as_ref();
+
 				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap();
+				let parent_stack_data = parent_stack_data.borrow();
 				let task = self.task_list[task_runtime_data.task_id as usize].clone().upgrade().unwrap();
 				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data.as_ref(), task.borrow().as_ref(), &stack_data, now_timestamp);
 				
@@ -898,7 +898,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, stack_data: &StackRuntimeData, task:&mut dyn ITaskProxy,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
@@ -919,12 +919,12 @@ impl BehaviorTree{
 			let mut status = TaskStatus::Success;
 			if self.active_stack[stack_index].borrow().len() == 0{
 				if stack_index == 0{
-					self.remove_stack(stack_index, stack);
+					self.remove_stack(stack_index, stack,stack_data);
 					let _ =  self.disable();
 					self.execution_status = status;
 					status = TaskStatus::Inactive;
 				}else{
-					self.remove_stack(stack_index, stack);
+					self.remove_stack(stack_index, stack,stack_data);
 				}
 			}
 
@@ -934,13 +934,13 @@ impl BehaviorTree{
 		let mut status: TaskStatus = previous_status;
 		if task.instant() && (self.non_instant_task_status[stack_index] == TaskStatus::Success || self.non_instant_task_status[stack_index] == TaskStatus::Failure){
 			status = self.non_instant_task_status[stack_index].clone();
-			status = self.pop_task(task_index as i32, stack_index, status, true, task, stack);
+			status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, stack_data);
 			return status;
 		}
 
-		self.push_task(stack_index, task_index, stack);
+		self.push_task(stack_index, task_index, stack, stack_data);
 		if task.is_implements_iparenttask(){
-			status = self.run_parent_task(task_index, stack_index, status, task, stack);
+			status = self.run_parent_task(task_index, stack_index, status, task, stack, stack_data, task_runtime_data);
 			status = task.override_status1(status, self);
 		}else{
 			if task.is_implements_iaction(){
@@ -954,21 +954,19 @@ impl BehaviorTree{
 			status = task.on_update(self);
 		}
 
-		let task_runtime_data = self.task_datas.get(&task.id()).unwrap();
-		let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
 		let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
-		self.runtime_event_handle.post_on_update(self, task_runtime_data, stack_runtime_data, task,now_timestamp, status.clone());
+		self.runtime_event_handle.post_on_update(self, task_runtime_data, stack_data, task,now_timestamp, status.clone());
 
 		if task.is_implements_iaction(){
 			if task.is_sync_to_client(){
 				let datas = task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
-				self.runtime_event_handle.action_post_on_update(self, task_runtime_data, stack_runtime_data, task,now_timestamp, status.clone(), datas);
+				self.runtime_event_handle.action_post_on_update(self, task_runtime_data, stack_data, task,now_timestamp, status.clone(), datas);
 			}
 		}
 
 		if status != TaskStatus::Running{
 			if task.instant(){
-				status = self.pop_task(task_index as i32, stack_index, status, true, task, stack);
+				status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, stack_data);
 			}else{
 				self.non_instant_task_status[stack_index] = status.clone();
 				status = TaskStatus::Running;
@@ -978,23 +976,32 @@ impl BehaviorTree{
 		return status;
 	}
 
-	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> TaskStatus{
+	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
 		if !task.can_run_parallel_children() || task.override_status1(TaskStatus::Running, self) != TaskStatus::Running{
 			let mut child_status = TaskStatus::Inactive;
 			let parent_stack = stack_index;
-			let parent_stack_runtime_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
-			let task_runtime_data = self.task_datas.get(&task.id()).unwrap();
 			let children_indexs = self.children_index[task_index as usize].clone();
 
 			while task.can_execute(self) &&(child_status != TaskStatus::Running||task.can_run_parallel_children())&&self.is_running{
 				let child_index = task.current_child_index(self);
 				if task.can_run_parallel_children(){
+					let child_stack_index = self.add_stack();
+					let child_stack = self.active_stack[child_stack_index].clone();
+					let child_stack = child_stack.borrow_mut();
+					let child_stack = child_stack.as_ref();
 
+					self.stack_id_to_parallel_task_id.insert(child_stack.stack_id as u32, task.id() as u32);
+					self.parallel_task_id_to_stack_ids.get_mut(&(task.id() as i32)).unwrap().push(child_stack.stack_id as u32);
+
+					let child_stack_data = self.stack_id_to_stack_data.get(&child_stack.stack_id).unwrap().clone();
+					let child_stack_data = child_stack_data.borrow();
+					let child_stack_data = child_stack_data.as_ref();
+					self.runtime_event_handle.parallel_add_child_stack(self, task_runtime_data, stack_data, task, child_stack_data);
 				}else{
 					task.on_child_started0(self);
 					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
 					let mut child_task = child_task.borrow_mut();
-					child_status = self.run_task(child_index, stack_index, child_status,  stack, child_task.as_mut());
+					child_status = self.run_task(child_index, stack_index, child_status,  stack, stack_data, child_task.as_mut(), task_runtime_data);
 					status = child_status.clone();
 				}
 			}
@@ -1061,7 +1068,10 @@ impl IBehaviorTree for BehaviorTree{
 				let stack = self.active_stack[0].clone();
 				let mut stack = stack.borrow_mut();
 				let stack = stack.as_mut();
-				self.push_task(0,0, stack);
+				let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+				let stack_data = stack_data.borrow();
+				let stack_data = stack_data.as_ref();
+				self.push_task(0,0, stack, stack_data);
 				self.initialize_first_stack_and_first_task = false;
 			}
 
@@ -1076,6 +1086,10 @@ impl IBehaviorTree for BehaviorTree{
 				let current_stack = self.active_stack[j].clone();
 				let mut stack = current_stack.borrow_mut();
 				let stack = stack.as_mut();
+				let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+				let stack_data = stack_data.borrow();
+				let stack_data = stack_data.as_ref();
+
 				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].as_ref().borrow().len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
 					task_index = self.active_stack[j].as_ref().borrow().peak();
 					if !self.is_running{
@@ -1091,7 +1105,11 @@ impl IBehaviorTree for BehaviorTree{
 					let task = task.as_mut();
 
 					start_index = task_index as i32;
-					status = self.run_task(task_index, j, status, stack, task);
+					let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+					let task_runtime_data = task_runtime_data.borrow();
+					let task_runtime_data = task_runtime_data.as_ref();
+					
+					status = self.run_task(task_index, j, status, stack, stack_data, task, task_runtime_data);
 				}
 			}
 		}
