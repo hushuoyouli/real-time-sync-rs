@@ -896,6 +896,27 @@ impl BehaviorTree{
 	}
 
 	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus) -> TaskStatus{
+		if task_index as usize >= self.task_list.len(){
+			return previous_status;
+		}
+
+		let task = self.task_list[task_index as usize].upgrade().unwrap();
+		let task = task.borrow_mut();
+
+		if task.disabled(){
+			let parent_index = self.parent_index[task_index as usize];
+			if parent_index != -1{
+				let parent_task = self.task_list[parent_index as usize].upgrade().unwrap();
+				let mut parent_task = parent_task.borrow_mut();
+			
+				if !parent_task.can_run_parallel_children(){
+					parent_task.on_child_executed1(TaskStatus::Inactive, self);
+				}
+			}
+		}
+
+		//let task = (&self.task_list[task_index as usize]).upgrade().unwrap().borrow();
+
 		todo!("run_task");		
 	}
 
