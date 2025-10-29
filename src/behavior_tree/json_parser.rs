@@ -1,7 +1,7 @@
 use std::rc::{Rc, Weak};
 use serde_json::from_str;
 use std::collections::HashMap;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 
 use super::interface::{IParser, TaskAddData,ITaskProxy, IAction, IConditional, IComposite, IDecorator, RealTaskType};
 use super::runtime::TaskProxy;
@@ -24,10 +24,10 @@ use super::decorator::until_forever::UntilForever;
 use super::conditional::need_follow_joystick::NeedFollowJoystick;
 
 pub struct JsonParser{
-    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
-    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>>,
-    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>>,
-    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>>,
+    action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
+    conditional_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>>,
+    composite_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>>,
+    decorator_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>>,
 }
 
 impl JsonParser{
@@ -61,24 +61,24 @@ impl JsonParser{
         Rc::new(RefCell::new(Box::new(parser)))
     }
 
-    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>){
+    pub fn register_action_fn(&mut self, name:&str, action_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>){
         self.action_fn.insert(name.to_string(), action_generate_fn);
     }
 
-    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>){
+    pub fn register_conditional_fn(&mut self, name:&str, conditional_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IConditional>){
         self.conditional_fn.insert(name.to_string(), conditional_generate_fn);
     }
 
-    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>){
+    pub fn register_composite_fn(&mut self, name:&str, composite_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IComposite>){
         self.composite_fn.insert(name.to_string(), composite_generate_fn);
     }
 
-    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>){
+    pub fn register_decorator_fn(&mut self, name:&str, decorator_generate_fn:fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IDecorator>){
         self.decorator_fn.insert(name.to_string(), decorator_generate_fn);
     }
 
 
-    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Weak<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
+    fn generate_real_task(&self, corresponding_type:&str, variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Result<RealTaskType, Box<dyn std::error::Error>>{
         if self.action_fn.contains_key(corresponding_type){
             return Ok(RealTaskType::Action(self.action_fn.get(corresponding_type).unwrap()(variables, id_2_task)));
         }
@@ -110,7 +110,7 @@ impl JsonParser{
             }
         }
 
-        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, Rc::downgrade(id_2_task))?;
+        let real_task: RealTaskType = self.generate_real_task(corresponding_type, variables, id_2_task.clone())?;
 
         let name = match task_json["Name"].as_str(){
             Some(name) => name,
