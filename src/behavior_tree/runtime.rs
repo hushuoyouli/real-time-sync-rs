@@ -1086,8 +1086,12 @@ impl IBehaviorTree for BehaviorTree{
 						break;
 					}
 
+					let task = self.task_list[task_index as usize].upgrade().unwrap();
+					let mut task = task.borrow_mut();
+					let task = task.as_mut();
+
 					start_index = task_index as i32;
-					status = self.run_task(task_index, j, status, stack);
+					status = self.run_task(task_index, j, status, stack, task);
 				}
 			}
 		}
