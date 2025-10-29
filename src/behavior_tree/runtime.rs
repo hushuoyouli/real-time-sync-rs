@@ -852,10 +852,10 @@ impl BehaviorTree{
 		}
 	}
 
-	fn remove_stack(&mut self, stack_index:usize) {
+	fn remove_stack(&mut self, stack_index:usize, stack:&mut RunningStack) {
 		if stack_index < self.active_stack.len() {
-			let stack = self.active_stack[stack_index].clone();
-			let stack = stack.borrow();
+/* 			let stack = self.active_stack[stack_index].clone();
+			let stack = stack.borrow(); */
 			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap();
 
 
@@ -896,7 +896,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, mut stack_index:usize, previous_status:TaskStatus) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, mut stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
@@ -922,12 +922,12 @@ impl BehaviorTree{
 			let mut status = TaskStatus::Success;
 			if self.active_stack[stack_index].borrow().len() == 0{
 				if stack_index == 0{
-					self.remove_stack(stack_index);
+					self.remove_stack(stack_index, stack);
 					let _ =  self.disable();
 					self.execution_status = status;
 					status = TaskStatus::Inactive;
 				}else{
-					self.remove_stack(stack_index);
+					self.remove_stack(stack_index, stack);
 				}
 			}
 
@@ -941,9 +941,9 @@ impl BehaviorTree{
 			return status;
 		}
 
-		let stack = self.active_stack[stack_index].clone();
+/* 		let stack = self.active_stack[stack_index].clone();
 		let mut stack = stack.borrow_mut();
-		let stack = stack.as_mut();
+		let stack = stack.as_mut(); */
 
 		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
@@ -1061,6 +1061,8 @@ impl IBehaviorTree for BehaviorTree{
 				let mut task_index;
 
 				let current_stack = self.active_stack[j].clone();
+				let mut stack = current_stack.borrow_mut();
+				let stack = stack.as_mut();
 				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].as_ref().borrow().len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
 					task_index = self.active_stack[j].as_ref().borrow().peak();
 					if !self.is_running{
@@ -1072,7 +1074,7 @@ impl IBehaviorTree for BehaviorTree{
 					}
 
 					start_index = task_index as i32;
-					status = self.run_task(task_index, j, status);
+					status = self.run_task(task_index, j, status, stack);
 				}
 			}
 		}
