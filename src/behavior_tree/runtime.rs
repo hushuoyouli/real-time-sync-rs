@@ -1016,10 +1016,13 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
+
+		let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+		let task_runtime_data = task_runtime_data.as_ref();
 
 		let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
 		let stack_data = stack_data.as_ref();
@@ -1059,7 +1062,7 @@ impl BehaviorTree{
 			return status;
 		}
 
-		self.push_task(stack_index, task_index, stack, stack_data);
+		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
 			status = self.run_parent_task(task_index, stack_index, status, task, stack, stack_data, task_runtime_data);
 			status = task.override_status1(status, self);
@@ -1097,7 +1100,11 @@ impl BehaviorTree{
 		return status;
 	}
 
-	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
+	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> TaskStatus{
+		let stack_data: &StackRuntimeData = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone().as_ref();
+		let task_runtime_data: &TaskRuntimeData = self.task_datas.get(&task.id()).unwrap().clone().as_ref();
+
+
 		if !task.can_run_parallel_children() || task.override_status1(TaskStatus::Running, self) != TaskStatus::Running{
 			let mut child_status = TaskStatus::Inactive;
 			let parent_stack = stack_index;
@@ -1229,7 +1236,6 @@ impl IBehaviorTree for BehaviorTree{
 
 					start_index = task_index as i32;
 					let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
-					let task_runtime_data = task_runtime_data.borrow();
 					let task_runtime_data = task_runtime_data.as_ref();
 
 					status = self.run_task(task_index, j, status, stack,  task, task_runtime_data);
