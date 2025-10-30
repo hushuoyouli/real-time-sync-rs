@@ -1017,7 +1017,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy, parent_task:Option<&mut dyn ITaskProxy>) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy, mut parent_task:Option<&mut dyn ITaskProxy>) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
@@ -1030,7 +1030,7 @@ impl BehaviorTree{
 
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
-			if let Some(parent_task_ref) = &parent_task {
+			if let Some(parent_task_ref) = &mut parent_task {
 				if !parent_task_ref.can_run_parallel_children(){
 					parent_task_ref.on_child_executed1(TaskStatus::Inactive, self);
 				}else{
