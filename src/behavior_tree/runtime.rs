@@ -1101,8 +1101,10 @@ impl BehaviorTree{
 	}
 
 	fn run_parent_task(&mut self, task_index:u32, stack_index:usize, mut status:TaskStatus, task:&mut dyn ITaskProxy, stack:&mut RunningStack) -> TaskStatus{
-		let stack_data: &StackRuntimeData = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone().as_ref();
-		let task_runtime_data: &TaskRuntimeData = self.task_datas.get(&task.id()).unwrap().clone().as_ref();
+		let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+		let stack_data = stack_data.as_ref();
+		let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+		let task_runtime_data = task_runtime_data.as_ref();
 
 
 		if !task.can_run_parallel_children() || task.override_status1(TaskStatus::Running, self) != TaskStatus::Running{
@@ -1130,13 +1132,13 @@ impl BehaviorTree{
 					let mut child_task = child_task.borrow_mut();
 					let child_task = child_task.as_mut();
 
-					child_status = self.run_task(children_indexs[child_index as usize] as u32, child_stack_index, status,  child_stack, child_stack_data, child_task, task_runtime_data);
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, child_stack_index, status,  child_stack, child_task);
 					status = child_status.clone();
 				}else{
 					task.on_child_started0(self);
 					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
 					let mut child_task = child_task.borrow_mut();
-					child_status = self.run_task(children_indexs[child_index as usize] as u32, stack_index, child_status,  stack, stack_data, child_task.as_mut(), task_runtime_data);
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, stack_index, child_status,  stack,  child_task.as_mut());
 					status = child_status.clone();
 				}
 			}
