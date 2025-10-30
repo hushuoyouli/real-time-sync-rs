@@ -1088,7 +1088,7 @@ impl BehaviorTree{
 
 		if status != TaskStatus::Running{
 			if task.instant(){
-				status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, stack_data);
+				status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, parent_task);
 			}else{
 				self.non_instant_task_status[stack_index] = status.clone();
 				status = TaskStatus::Running;
