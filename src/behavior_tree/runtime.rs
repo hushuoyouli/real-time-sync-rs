@@ -1291,7 +1291,33 @@ impl IBehaviorTree for BehaviorTree{
 		self.unit_id
 	}
 
-	fn rebuild_sync(&self, collector:&dyn IRebuildSyncDataCollector){
+	fn rebuild_sync(&self, collector:&mut dyn IRebuildSyncDataCollector){
+		if self.is_running{
+			for stack in self.active_stack.iter(){
+				let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.borrow().stack_id).unwrap().clone();
+				collector.stack(self, stack_runtime_data.as_ref());
+			}
+
+			for stack in self.active_stack.iter(){
+				let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.borrow().stack_id).unwrap().clone();
+				let task_index = stack.borrow().peak();
+				let task = self.task_list[task_index as usize].upgrade().unwrap();
+				let task = task.borrow();
+				if task.is_implements_iaction(){
+					if task.is_sync_to_client(){
+						let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+						task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+						task.rebuild_sync_datas(self);
+						let sync_datas = task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+						collector.action(self, task_runtime_data.as_ref(), stack_runtime_data.as_ref(), task.as_ref(), &sync_datas);
+					}
+				}else if task.is_implements_iparenttask(){
+					if task.can_run_parallel_children(){
+						let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+					}
+				}
+			}
+		}
 
 	}
 
