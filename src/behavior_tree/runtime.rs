@@ -1240,7 +1240,8 @@ impl IBehaviorTree for BehaviorTree{
 					}else{
 						let parent_task = self.task_list[self.parent_index[task_index as usize] as usize].upgrade().unwrap();
 						let mut parent_task = parent_task.borrow_mut();
-						status = self.run_task(task_index, j, status, stack,  task, Some(parent_task.as_mut()));
+						let parent_task = parent_task.as_mut();
+						status = self.run_task(task_index, j, status, stack,  task, Some(parent_task));
 					}
 				}
 			}
