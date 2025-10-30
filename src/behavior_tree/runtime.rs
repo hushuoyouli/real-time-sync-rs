@@ -766,7 +766,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
 		if self.is_running{
 			return status;
 		}
@@ -910,7 +910,7 @@ impl BehaviorTree{
 								let stack = self.active_stack[j].clone();
 								let mut stack = stack.borrow_mut();
 								let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-								self.pop_task(task_index, j, status, false,  task, stack.as_mut(), &stack_data, None);
+								self.pop_task(task_index, j, status, false,  task, stack.as_mut(), None);
 								task_index = self.parent_index[task_index as usize];
 							}
 
@@ -976,13 +976,13 @@ impl BehaviorTree{
 			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
 				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
 				let task_runtime_data = self.task_datas.get(&(parallel_task_id as i32)).unwrap().clone();
-				let task_runtime_data = task_runtime_data.borrow();
 				let task_runtime_data = task_runtime_data.as_ref();
+				//let task_runtime_data = task_runtime_data.as_ref();
 
-				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap();
-				let parent_stack_data = parent_stack_data.borrow();
+				let parent_stack_data = self.stack_id_to_stack_data.get(&task_runtime_data.active_stack_id).unwrap().clone();
+				let parent_stack_data = parent_stack_data.as_ref();
 				let task = self.task_list[task_runtime_data.task_id as usize].clone().upgrade().unwrap();
-				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data.as_ref(), task.borrow().as_ref(), &stack_data, now_timestamp);
+				self.runtime_event_handle.parallel_remove_child_stack(self, task_runtime_data, parent_stack_data, task.borrow().as_ref(), &stack_data, now_timestamp);
 				
 				self.stack_id_to_parallel_task_id.remove(&(stack_data.stack_id as u32));
                 let old_parallel_task_id_to_stack_ids = self.parallel_task_id_to_stack_ids.get_mut(&(parallel_task_id as i32)).unwrap().clone();
