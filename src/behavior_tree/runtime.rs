@@ -1030,15 +1030,11 @@ impl BehaviorTree{
 
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
-			if parent_index != -1{
-				parent_task
-				let parent_task = self.task_list[parent_index as usize].upgrade().unwrap();
-				let mut parent_task = parent_task.borrow_mut();
-			
-				if !parent_task.can_run_parallel_children(){
-					parent_task.on_child_executed1(TaskStatus::Inactive, self);
+			if let Some(parent_task_ref) = &parent_task {
+				if !parent_task_ref.can_run_parallel_children(){
+					parent_task_ref.on_child_executed1(TaskStatus::Inactive, self);
 				}else{
-					parent_task.on_child_executed2(self.relative_child_index[task_index as usize] as u32, TaskStatus::Inactive, self);
+					parent_task_ref.on_child_executed2(self.relative_child_index[task_index as usize] as u32, TaskStatus::Inactive, self);
 				}
 			}
 
@@ -1050,7 +1046,7 @@ impl BehaviorTree{
 					self.execution_status = status;
 					status = TaskStatus::Inactive;
 				}else{
-					self.remove_stack(stack_index, stack);
+					self.remove_stack(stack_index, stack, );
 				}
 			}
 
