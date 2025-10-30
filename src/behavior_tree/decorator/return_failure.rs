@@ -37,7 +37,14 @@ impl IParentTask for ReturnFailure{
     fn current_child_index(&self, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->u32 {0}
 
     fn decorate(&mut self, status:TaskStatus, task_proxy:&dyn ITaskProxy, behavior_tree:&dyn IBehaviorTree)->TaskStatus {
-        TaskStatus::Failure
+        if status == TaskStatus::Success
+        {
+            TaskStatus::Failure
+        }
+        else
+        {
+            status
+        }
     }
 }
 
