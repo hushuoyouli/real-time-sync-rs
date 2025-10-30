@@ -1236,12 +1236,35 @@ impl IBehaviorTree for BehaviorTree{
 			let status = TaskStatus::Success;
 
 
-			xxx
+			for task in self.task_list.iter(){
+				let task = task.upgrade().unwrap();
+				let mut task = task.borrow_mut();
+				if !task.disabled(){
+					task.on_complete(self);
+				}
+			}
 
+			self.remove_child_conditional_reevaluate(-1);
 
+			for task in self.task_list.iter(){
+				let task = task.upgrade().unwrap();
+				let mut task = task.borrow_mut();
+
+				if task.is_implements_iaction(){
+					if task.is_sync_to_client(){
+						task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+						task.set_sync_data_collector(None);
+					}
+				}
+			}
+
+			self.execution_status = status;
+			self.is_running = false;
+			let now_timestamp_in_milli = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
+			self.runtime_event_handle.post_on_complete(self, now_timestamp_in_milli);
 			Ok(())
 		}else{
-			Err("BehaviorTree is not running".into());
+			Err("BehaviorTree is not running".into())
 		}
 		
 	}
