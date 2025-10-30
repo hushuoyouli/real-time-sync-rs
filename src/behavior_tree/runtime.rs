@@ -1016,7 +1016,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy, parent_task:Option<&mut dyn ITaskProxy>) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
@@ -1058,13 +1058,13 @@ impl BehaviorTree{
 		let mut status: TaskStatus = previous_status;
 		if task.instant() && (self.non_instant_task_status[stack_index] == TaskStatus::Success || self.non_instant_task_status[stack_index] == TaskStatus::Failure){
 			status = self.non_instant_task_status[stack_index].clone();
-			status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, stack_data);
+			status = self.pop_task(task_index as i32, stack_index, status, true, task, stack, parent_task);
 			return status;
 		}
 
 		self.push_task(stack_index, task_index, stack);
 		if task.is_implements_iparenttask(){
-			status = self.run_parent_task(task_index, stack_index, status, task, stack, stack_data, task_runtime_data);
+			status = self.run_parent_task(task_index, stack_index, status, task, stack);
 			status = task.override_status1(status, self);
 		}else{
 			if task.is_implements_iaction(){
@@ -1132,13 +1132,13 @@ impl BehaviorTree{
 					let mut child_task = child_task.borrow_mut();
 					let child_task = child_task.as_mut();
 
-					child_status = self.run_task(children_indexs[child_index as usize] as u32, child_stack_index, status,  child_stack, child_task);
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, child_stack_index, status,  child_stack, child_task,Some(task));
 					status = child_status.clone();
 				}else{
 					task.on_child_started0(self);
 					let child_task = self.task_list[children_indexs[child_index as usize] as usize].upgrade().unwrap();
 					let mut child_task = child_task.borrow_mut();
-					child_status = self.run_task(children_indexs[child_index as usize] as u32, stack_index, child_status,  stack,  child_task.as_mut());
+					child_status = self.run_task(children_indexs[child_index as usize] as u32, stack_index, child_status,  stack,  child_task.as_mut(),Some(task));
 					status = child_status.clone();
 				}
 			}
