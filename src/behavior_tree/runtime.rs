@@ -1233,8 +1233,32 @@ impl IBehaviorTree for BehaviorTree{
 
 	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>{
 		if self.is_running{
-			let status = TaskStatus::Success;
+			let mut status = TaskStatus::Success;
 
+			for i in (0..self.active_stack.len()).rev(){
+				let current_stack = self.active_stack[i].clone();
+				let mut current_stack = current_stack.borrow_mut();
+				while current_stack.len() > 0{
+					let stack_count = current_stack.len();
+					let task_index = current_stack.peak();
+					let task = self.task_list[task_index as usize].upgrade().unwrap();
+					let mut task = task.borrow_mut();
+					let task = task.as_mut();
+
+					let parent_index = self.parent_index[task_index as usize];
+					if parent_index != -1{
+						status = self.pop_task(task_index as i32, i, status.clone(), false,  task, current_stack.as_mut(), None);
+					}else{
+						let parent_task = self.task_list[parent_index as usize].upgrade().unwrap();
+						let mut parent_task = parent_task.borrow_mut();
+						status = self.pop_task(task_index as i32, i, status.clone(), false,  task, current_stack.as_mut(), Some(parent_task.as_mut()));
+					}
+					
+					if stack_count == 1{
+						break;
+					}
+				}
+			}
 
 			for task in self.task_list.iter(){
 				let task = task.upgrade().unwrap();
