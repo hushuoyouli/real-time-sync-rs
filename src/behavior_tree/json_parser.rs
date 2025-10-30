@@ -22,6 +22,13 @@ use super::decorator::until_success::UntilSuccess;
 use super::decorator::until_forever::UntilForever;
 
 use super::conditional::need_follow_joystick::NeedFollowJoystick;
+use super::interface::IClock;
+use super::runtime::BehaviorTree;
+use super::interface::IRuntimeEventHandle;
+use super::interface::IBehaviorTree;
+use super::interface::StackRuntimeData;
+use super::interface::TaskRuntimeData;
+use super::consts::TaskStatus;
 
 pub struct JsonParser{
     action_fn: HashMap<String, fn(variables:HashMap<String, serde_json::Value>,id_2_task:Rc<RefCell<Box<HashMap<i32, Weak<RefCell<Box<dyn ITaskProxy>>>>>>>) -> Box<dyn IAction>>,
@@ -305,5 +312,72 @@ mod tests {
         }
         //println!("result: {:?}", result);
         assert!(result.is_ok());
+    }
+
+    struct DummyClock;
+    impl DummyClock {
+        pub fn new() -> Rc<RefCell<Box<dyn IClock>>> {
+            Rc::new(RefCell::new(Box::new(DummyClock)))
+        }
+    }
+    impl IClock for DummyClock {
+        fn timestamp_in_mill(&self) -> u64 {
+            0
+        }
+    }
+
+    struct DummyRuntimeEventHandle;
+    impl DummyRuntimeEventHandle {
+        pub fn new() -> Box<dyn IRuntimeEventHandle> {
+            Box::new(DummyRuntimeEventHandle)
+        }
+    }
+    impl IRuntimeEventHandle for DummyRuntimeEventHandle {
+        fn post_initialize(&self, behavior_tree: &dyn IBehaviorTree, timestamp_in_mill: u64) {
+        }
+        fn post_on_complete(&self, behavior_tree: &dyn IBehaviorTree, timestamp_in_mill: u64) {
+        }
+        fn new_stack(&self, behavior_tree: &dyn IBehaviorTree, data: &StackRuntimeData) {
+        }
+        fn remove_stack(&self, behavior_tree: &dyn IBehaviorTree, data: &StackRuntimeData, timestamp_in_mill: u64) {
+        }
+        fn pre_on_start(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy) {
+        }
+        fn post_on_update(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, timestamp_in_mill: u64, status: TaskStatus) {
+        }
+        fn post_on_end(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, timestamp_in_mill: u64) {
+        }
+        fn action_post_on_start(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, datas: Vec<Vec<u8>>) {
+        }
+        fn action_post_on_update(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, timestamp_in_mill: u64, status: TaskStatus, datas: Vec<Vec<u8>>) {
+        }
+        fn action_post_on_end(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, timestamp_in_mill: u64, datas: Vec<Vec<u8>>) {
+        }
+        fn parallel_pre_on_start(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy) {
+        }
+        fn parallel_post_on_end(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, timestamp_in_mill: u64) {
+        }
+        fn parallel_add_child_stack(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, child_stack_runtime_data: &StackRuntimeData) {
+        }
+        fn parallel_remove_child_stack(&self, behavior_tree: &dyn IBehaviorTree, task_runtime_data: &TaskRuntimeData, stack_runtime_data: &StackRuntimeData, task: &dyn ITaskProxy, child_stack_runtime_data: &StackRuntimeData, timestamp_in_mill: u64) {
+        }
+    }
+
+    #[test]
+
+    /* new(id: u64, config:&Vec<u8>,	unit_id:u64,  clock:&Weak<RefCell<Box<dyn IClock>>>, 
+		runtime_event_handle:Box<dyn IRuntimeEventHandle>,parser:Weak<RefCell<Box<dyn IParser>>>) */
+    fn test_json_parser_deserialize_with_disable_tree() {
+        let file_path = "src/behavior_tree/test_behaviortree.json";
+        let file_content = std::fs::read_to_string(file_path).unwrap();
+        let file_bytes = file_content.as_bytes().to_vec();
+
+        let parser = JsonParser::new();
+        let clock = DummyClock::new();
+        let behavior_tree = BehaviorTree::new(0, &file_bytes, 0, &Rc::downgrade(&clock),DummyRuntimeEventHandle::new(), Rc::downgrade(&parser));
+        let mut behavior_tree = behavior_tree.borrow_mut();
+        let _ = behavior_tree.enable();
+        behavior_tree.update();
+        let _ = behavior_tree.disable();
     }
 }

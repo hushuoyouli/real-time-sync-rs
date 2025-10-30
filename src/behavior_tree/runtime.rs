@@ -560,6 +560,7 @@ impl BehaviorTree{
 		self.parent_index.push(-1);
 		self.parent_composite_index.push(-1);
 		self.child_conditional_index.push(Vec::with_capacity(10));
+		self.children_index.push(Vec::with_capacity(10));
 		self.relative_child_index.push(-1);
 		let mut parent_composite_index = -1;
 
@@ -1246,14 +1247,14 @@ impl IBehaviorTree for BehaviorTree{
 					let task = task.as_mut();
 
 					let parent_index = self.parent_index[task_index as usize];
-					if parent_index != -1{
+					if parent_index == -1{
 						status = self.pop_task(task_index as i32, i, status.clone(), false,  task, current_stack.as_mut(), None);
 					}else{
 						let parent_task = self.task_list[parent_index as usize].upgrade().unwrap();
 						let mut parent_task = parent_task.borrow_mut();
 						status = self.pop_task(task_index as i32, i, status.clone(), false,  task, current_stack.as_mut(), Some(parent_task.as_mut()));
 					}
-					
+
 					if stack_count == 1{
 						break;
 					}
@@ -1317,13 +1318,13 @@ impl IBehaviorTree for BehaviorTree{
 				let stack = stack.as_mut();
 
 
-				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].as_ref().borrow().len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
-					task_index = self.active_stack[j].as_ref().borrow().peak();
+				while status != TaskStatus::Running && j < stack.len() && stack.len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
+					task_index = stack.peak();
 					if !self.is_running{
 						break;
 					}
 
-					if self.active_stack[j].as_ref().borrow().len() > 0 && start_index == (self.active_stack[j].as_ref().borrow().peak() as i32){
+					if stack.len() > 0 && start_index == (stack.peak() as i32){
 						break;
 					}
 
@@ -1332,7 +1333,7 @@ impl IBehaviorTree for BehaviorTree{
 					let task = task.as_mut();
 
 					start_index = task_index as i32;
-					if self.parent_index[task_index as usize] != -1 {
+					if self.parent_index[task_index as usize] == -1 {
 						status = self.run_task(task_index, j, status, stack,  task, None);
 					}else{
 						let parent_task = self.task_list[self.parent_index[task_index as usize] as usize].upgrade().unwrap();
