@@ -1,2 +1,2 @@
 # real-time-sync-rs
-实时同步框架rust版本,测试用
+[[参考real-time-sync下面](https://github.com/hushuoyouli/real-time-sync/)](https://github.com/hushuoyouli/real-time-sync/blob/main/README.md)
