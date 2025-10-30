@@ -1314,6 +1314,10 @@ impl IBehaviorTree for BehaviorTree{
 				}else if task.is_implements_iparenttask(){
 					if task.can_run_parallel_children(){
 						let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+						let stack_runtime_data = self.stack_id_to_stack_data.get(&stack.borrow().stack_id).unwrap().clone();
+						let child_stack_runtime_ids = self.parallel_task_id_to_stack_ids.get(&(task.id() as i32)).unwrap().clone();
+						let child_stack_runtime_datas = child_stack_runtime_ids.iter().map(|id| *(self.stack_id_to_stack_data.get(&(*id as usize)).unwrap().clone())).collect();
+						collector.parallel(self, task_runtime_data.as_ref(), stack_runtime_data.as_ref(), task.as_ref(), &child_stack_runtime_datas);
 					}
 				}
 			}
