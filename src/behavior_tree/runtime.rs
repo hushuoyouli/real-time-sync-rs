@@ -692,15 +692,16 @@ impl BehaviorTree{
 			let task_execute_id= self.next_task_execute_id();
 	
 			let task_runtime_data= TaskRuntimeData::new(task.id(), now_timestamp, task_execute_id, stack_data.stack_id);
-			self.task_datas.insert(task.id(), Rc::new(RefCell::new(Box::new(task_runtime_data))));
+			self.task_datas.insert(task.id(), Box::new(task_runtime_data));
 	
+
 			//	TODO:这里需要截获初始化的数据？
-			self.runtime_event_handle.pre_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task);
+			self.runtime_event_handle.pre_on_start(self, self.task_datas.get(&task.id()).unwrap().as_ref(), &stack_data, task);
 
 			//self.runtimeEventHandle.PreOnStart(p, taskRuntimeData, stackData, task)
 			if task.is_implements_iparenttask() {
 				if task.can_run_parallel_children() {
-					self.runtime_event_handle.parallel_pre_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task);
+					self.runtime_event_handle.parallel_pre_on_start(self, self.task_datas.get(&task.id()).unwrap().as_ref(), &stack_data, task);
 				}
 			}
 	
@@ -711,7 +712,7 @@ impl BehaviorTree{
 					sync_data_collector.borrow_mut().get_and_clear();
 				}
 			}
-
+            
 			task.on_start(self);
 			
 			if task.is_implements_iaction() {
@@ -719,7 +720,7 @@ impl BehaviorTree{
 				if task.is_sync_to_client() {
 					let sync_data_collector = task.sync_data_collector().unwrap();
 					let datas = sync_data_collector.borrow_mut().get_and_clear();
-					self.runtime_event_handle.action_post_on_start(self, &self.task_datas.get(&task.id()).unwrap().borrow(), &stack_data, task, datas);
+					self.runtime_event_handle.action_post_on_start(self, self.task_datas.get(&task.id()).unwrap().as_ref(), &stack_data, task, datas);
 				}
 			}
 	
@@ -909,9 +910,7 @@ impl BehaviorTree{
 								let stack = self.active_stack[j].clone();
 								let mut stack = stack.borrow_mut();
 								let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-								let stack_data = stack_data.borrow();
-								let stack_data = stack_data.as_ref();
-								self.pop_task(task_index, j, status, false,  task, stack.as_mut(), stack_data);
+								self.pop_task(task_index, j, status, false,  task, stack.as_mut(), &stack_data, None);
 								task_index = self.parent_index[task_index as usize];
 							}
 
