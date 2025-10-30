@@ -973,8 +973,9 @@ impl BehaviorTree{
 		}
 	}
 
-	fn remove_stack(&mut self, stack_index:usize, stack:&mut RunningStack,stack_data: &StackRuntimeData) {
+	fn remove_stack(&mut self, stack_index:usize, stack:&mut RunningStack) {
 		if stack_index < self.active_stack.len() {
+			let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
 			let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 			if self.stack_id_to_parallel_task_id.contains_key(&(stack_data.stack_id as u32)) {
 				let parallel_task_id = *self.stack_id_to_parallel_task_id.get(&(stack_data.stack_id as u32)).unwrap();
@@ -997,7 +998,7 @@ impl BehaviorTree{
 				}
 			}
 
-			self.runtime_event_handle.remove_stack(self, stack_data, now_timestamp);
+			self.runtime_event_handle.remove_stack(self, stack_data.as_ref(), now_timestamp);
 			self.stack_id_to_stack_data.remove(&(stack_data.stack_id as usize));
 			
 			self.active_stack.remove(stack_index);
@@ -1030,6 +1031,7 @@ impl BehaviorTree{
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
 			if parent_index != -1{
+				parent_task
 				let parent_task = self.task_list[parent_index as usize].upgrade().unwrap();
 				let mut parent_task = parent_task.borrow_mut();
 			
@@ -1041,14 +1043,14 @@ impl BehaviorTree{
 			}
 
 			let mut status = TaskStatus::Success;
-			if self.active_stack[stack_index].borrow().len() == 0{
+			if stack.len() == 0{
 				if stack_index == 0{
-					self.remove_stack(stack_index, stack,stack_data);
+					self.remove_stack(stack_index, stack, stack_data);
 					let _ =  self.disable();
 					self.execution_status = status;
 					status = TaskStatus::Inactive;
 				}else{
-					self.remove_stack(stack_index, stack,stack_data);
+					self.remove_stack(stack_index, stack, stack_data);
 				}
 			}
 
