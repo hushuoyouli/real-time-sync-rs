@@ -769,7 +769,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+	fn pop_task(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, mut parent_task:Option<&mut dyn ITaskProxy>)->TaskStatus{
 		if self.is_running{
 			return status;
 		}
