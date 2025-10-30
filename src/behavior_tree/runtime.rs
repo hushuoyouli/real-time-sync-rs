@@ -652,6 +652,10 @@ impl BehaviorTree{
 	}
 
 	fn is_parent_task(&self, possible_parent:i32, possible_child:i32)->bool{
+		if possible_parent == -1{
+			return true;
+		}
+
 		let mut  parent_index;
 		let mut  child_index = possible_child;
 
@@ -1228,7 +1232,18 @@ impl IBehaviorTree for BehaviorTree{
 	}
 
 	fn disable(&mut self)->Result<(), Box<dyn std::error::Error>>{
-		Ok(())
+		if self.is_running{
+			let status = TaskStatus::Success;
+
+
+			xxx
+
+
+			Ok(())
+		}else{
+			Err("BehaviorTree is not running".into());
+		}
+		
 	}
 
 	fn update(&mut self){
