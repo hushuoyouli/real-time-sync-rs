@@ -477,9 +477,9 @@ pub struct BehaviorTree{
 	root_task:Option<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	clock:Weak<RefCell<Box<dyn IClock>>>,                            
 	stack_id:usize,
-    stack_id_to_stack_data:HashMap<usize, StackRuntimeData>,
+    stack_id_to_stack_data:HashMap<usize, Box<StackRuntimeData>>,
 
-	task_datas:HashMap<i32, TaskRuntimeData>,
+	task_datas:HashMap<i32, Box<TaskRuntimeData>>,
 
 	stack_id_to_parallel_task_id:HashMap<u32, u32>,
 	parallel_task_id_to_stack_ids:HashMap<i32, Vec<u32>>,
@@ -500,6 +500,7 @@ impl BehaviorTree{
 		let behavior_tree = Self{
 			id,
 			task_list: Vec::new(),
+			composite_abort_task: Vec::new(),
 			parent_index: Vec::new(),
 			children_index: Vec::new(),
 			relative_child_index: Vec::new(),
@@ -646,7 +647,7 @@ impl BehaviorTree{
 		let timestamp_in_mill = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
 		let stack_data = StackRuntimeData::new(stack_id, timestamp_in_mill);
 		self.runtime_event_handle.new_stack(self, &stack_data);
-		self.stack_id_to_stack_data.insert(stack_id, Rc::new(RefCell::new(Box::new(stack_data))));
+		self.stack_id_to_stack_data.insert(stack_id, Box::new(stack_data));
 		return stack_index;
 	}
 
