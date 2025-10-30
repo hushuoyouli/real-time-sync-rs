@@ -859,13 +859,18 @@ impl BehaviorTree{
 					if self.is_parent_task(task_index,  stack.peak() as i32){
 						let child_index = stack.peak();
 						let child_task = self.task_list[child_index as usize].clone().upgrade().unwrap();
-						
 						let mut child_task = child_task.borrow_mut();
+						let child_task = child_task.as_mut();
 
-						
-
-						let child_status = TaskStatus::Inactive;
-
+						let child_status = TaskStatus::Failure;
+						if self.parent_index[child_index as usize] == task_index {
+							self.pop_task(child_index as i32, i, child_status, false, child_task, stack.as_mut(), Some(task));
+						}else{
+							let parent_task =  &self.task_list[self.parent_index[child_index as usize] as usize].upgrade().unwrap();
+							let mut parent_task = parent_task.borrow_mut();
+							let parent_task = parent_task.as_mut();
+							self.pop_task(child_index as i32, i, child_status, false, child_task, stack.as_mut(), Some(parent_task));
+						}
 					}else{
 						break;
 					}
