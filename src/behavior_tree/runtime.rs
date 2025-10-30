@@ -878,7 +878,37 @@ impl BehaviorTree{
 			}
 		}
 
+		let task_runtime_data = self.task_datas.get(&task.id()).unwrap().clone();
+		let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+		let now_timestamp = self.clock.upgrade().as_ref().unwrap().borrow().timestamp_in_mill();
+		self.runtime_event_handle.post_on_end(self, task_runtime_data.as_ref(), stack_data.as_ref(), task, now_timestamp);
 
+		if task.is_implements_iaction(){
+			if task.is_sync_to_client(){
+				let datas = task.sync_data_collector().unwrap().borrow_mut().get_and_clear();
+				self.runtime_event_handle.action_post_on_end(self, task_runtime_data.as_ref(), stack_data.as_ref(), task, now_timestamp, datas);
+			}
+		}
+
+		if task.is_implements_iparenttask(){
+			if task.can_run_parallel_children(){
+				self.runtime_event_handle.parallel_post_on_end(self, task_runtime_data.as_ref(), stack_data.as_ref(), task, now_timestamp);
+				self.parallel_task_id_to_stack_ids.remove(&(task.id() as i32));
+			}
+		}
+
+		self.task_datas.remove(&task.id());
+		if stack.len() == 0{
+			if stack_index == 0{
+				self.remove_stack(stack_index, stack);
+				let _ = self.disable();
+				self.execution_status = status;
+				status = TaskStatus::Inactive;
+			}else{
+				self.remove_stack(stack_index, stack);
+				status = TaskStatus::Running;
+			}
+		}
 
 		status
 	}
