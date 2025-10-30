@@ -673,10 +673,13 @@ impl BehaviorTree{
 		task_execute_id
 	}
 
-	fn push_task(&mut self, stack_index:usize, task_index:u32, stack:&mut RunningStack, stack_data: &StackRuntimeData){
+	fn push_task(&mut self, stack_index:usize, task_index:u32, stack:&mut RunningStack){
 		if !self.is_running || stack_index >= self.active_stack.len() {
 			return
 		}
+
+		let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+		let stack_data = stack_data.as_ref();
 	
 		if stack.len() == 0 || stack.peak() != task_index {
 			stack.push(task_index);
@@ -1109,8 +1112,7 @@ impl BehaviorTree{
 					self.parallel_task_id_to_stack_ids.get_mut(&(task.id() as i32)).unwrap().push(child_stack.stack_id as u32);
 
 					let child_stack_data = self.stack_id_to_stack_data.get(&child_stack.stack_id).unwrap().clone();
-					let child_stack_data = child_stack_data.borrow();
-					let child_stack_data = child_stack_data.as_ref();
+					let child_stack_data = child_stack_data.as_ref();					
 					self.runtime_event_handle.parallel_add_child_stack(self, task_runtime_data, stack_data, task, child_stack_data);
 					task.on_child_started1(child_index, self);
 
@@ -1191,10 +1193,7 @@ impl IBehaviorTree for BehaviorTree{
 				let stack = self.active_stack[0].clone();
 				let mut stack = stack.borrow_mut();
 				let stack = stack.as_mut();
-				let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-				let stack_data = stack_data.borrow();
-				let stack_data = stack_data.as_ref();
-				self.push_task(0,0, stack, stack_data);
+				self.push_task(0,0, stack);
 				self.initialize_first_stack_and_first_task = false;
 			}
 
