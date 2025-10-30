@@ -477,9 +477,9 @@ pub struct BehaviorTree{
 	root_task:Option<Rc<RefCell<Box<dyn ITaskProxy>>>>,
 	clock:Weak<RefCell<Box<dyn IClock>>>,                            
 	stack_id:usize,
-    stack_id_to_stack_data:HashMap<usize, Rc<RefCell<Box<StackRuntimeData>>>>,
+    stack_id_to_stack_data:HashMap<usize, StackRuntimeData>,
 
-	task_datas:HashMap<i32, Rc<RefCell<Box<TaskRuntimeData>>>>,
+	task_datas:HashMap<i32, TaskRuntimeData>,
 
 	stack_id_to_parallel_task_id:HashMap<u32, u32>,
 	parallel_task_id_to_stack_ids:HashMap<i32, Vec<u32>>,
@@ -764,9 +764,7 @@ impl BehaviorTree{
 		}
 	}
 
-	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, 
-				pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, 
-				stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
+	fn pop_task<'a>(&mut self, task_index:i32, stack_index:usize,mut status:TaskStatus, pop_children:bool, task:&mut dyn ITaskProxy, stack:&mut RunningStack, stack_data: &StackRuntimeData, mut parent_task:Option<&'a mut dyn ITaskProxy>)->TaskStatus{
 		if self.is_running{
 			return status;
 		}
@@ -849,7 +847,24 @@ impl BehaviorTree{
 
 		if pop_children{
 			for i in (stack_index..self.active_stack.len()).rev(){
-				
+				let current_stack = self.active_stack[i].clone();
+				let mut stack = current_stack.borrow_mut();
+
+				while i < self.active_stack.len() && Rc::ptr_eq(&current_stack, &self.active_stack[i]) && stack.len() > 0 {
+					if self.is_parent_task(task_index,  stack.peak() as i32){
+						let child_index = stack.peak();
+						let child_task = self.task_list[child_index as usize].clone().upgrade().unwrap();
+						
+						let mut child_task = child_task.borrow_mut();
+
+						
+
+						let child_status = TaskStatus::Inactive;
+
+					}else{
+						break;
+					}
+				}
 			}
 		}
 
