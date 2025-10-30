@@ -1045,12 +1045,12 @@ impl BehaviorTree{
 			let mut status = TaskStatus::Success;
 			if stack.len() == 0{
 				if stack_index == 0{
-					self.remove_stack(stack_index, stack, stack_data);
+					self.remove_stack(stack_index, stack);
 					let _ =  self.disable();
 					self.execution_status = status;
 					status = TaskStatus::Inactive;
 				}else{
-					self.remove_stack(stack_index, stack, stack_data);
+					self.remove_stack(stack_index, stack);
 				}
 			}
 
