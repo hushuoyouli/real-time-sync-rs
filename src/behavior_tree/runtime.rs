@@ -1016,10 +1016,13 @@ impl BehaviorTree{
 		}
 	}
 
-	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, stack_data: &StackRuntimeData, task:&mut dyn ITaskProxy,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
+	fn run_task(&mut self, task_index:u32, stack_index:usize, previous_status:TaskStatus, stack:&mut RunningStack, task:&mut dyn ITaskProxy,task_runtime_data:&TaskRuntimeData) -> TaskStatus{
 		if task_index as usize >= self.task_list.len(){
 			return previous_status;
 		}
+
+		let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
+		let stack_data = stack_data.as_ref();
 
 		if task.disabled(){
 			let parent_index = self.parent_index[task_index as usize];
@@ -1208,9 +1211,7 @@ impl IBehaviorTree for BehaviorTree{
 				let current_stack = self.active_stack[j].clone();
 				let mut stack = current_stack.borrow_mut();
 				let stack = stack.as_mut();
-				let stack_data = self.stack_id_to_stack_data.get(&stack.stack_id).unwrap().clone();
-				let stack_data = stack_data.borrow();
-				let stack_data = stack_data.as_ref();
+
 
 				while status != TaskStatus::Running && j < self.active_stack.len() && self.active_stack[j].as_ref().borrow().len() > 0 && Rc::ptr_eq(&current_stack, &self.active_stack[j]) {
 					task_index = self.active_stack[j].as_ref().borrow().peak();
@@ -1231,7 +1232,7 @@ impl IBehaviorTree for BehaviorTree{
 					let task_runtime_data = task_runtime_data.borrow();
 					let task_runtime_data = task_runtime_data.as_ref();
 
-					status = self.run_task(task_index, j, status, stack, stack_data, task, task_runtime_data);
+					status = self.run_task(task_index, j, status, stack,  task, task_runtime_data);
 				}
 			}
 		}
