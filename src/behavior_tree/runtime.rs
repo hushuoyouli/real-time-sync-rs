@@ -572,7 +572,7 @@ impl BehaviorTree{
 				parent_composite_index = self.root_task.as_mut().unwrap().borrow_mut().id();
 			}
 
-			let mut parent_task = self.root_task.as_mut().unwrap().clone();
+			let parent_task = self.root_task.as_mut().unwrap().clone();
 			let mut children = parent_task.borrow_mut().children_mut().clone();
 
 
